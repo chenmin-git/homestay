@@ -38,7 +38,6 @@ const handleCommand = async (command) => {
         <span class="brand-mark">HS</span>
         <div>
           <strong>栖间民宿管理系统</strong>
-          <p>Spring Boot + Vue 全栈课程设计</p>
         </div>
       </div>
       <nav class="topnav">

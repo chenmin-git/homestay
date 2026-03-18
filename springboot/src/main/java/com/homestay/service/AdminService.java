@@ -349,6 +349,9 @@ public class AdminService {
     @Transactional
     public Map<String, Object> refundOrder(User operator, Long orderId) {
         BookingOrder order = loadOwnedOrder(operator, orderId);
+        if (order.getOrderStatus() != OrderStatus.REFUND_REQUESTED) {
+            throw new BusinessException("请先由用户发起退款申请");
+        }
         order.setOrderStatus(OrderStatus.REFUNDED);
         order.setPaymentStatus(PaymentStatus.REFUNDED);
         bookingOrderRepository.save(order);
@@ -872,6 +875,7 @@ public class AdminService {
         return order.getOrderStatus() == OrderStatus.PENDING_PAYMENT
             || order.getOrderStatus() == OrderStatus.PAID
             || order.getOrderStatus() == OrderStatus.CONFIRMED
+            || order.getOrderStatus() == OrderStatus.REFUND_REQUESTED
             || order.getOrderStatus() == OrderStatus.COMPLETED;
     }
 

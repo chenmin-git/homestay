@@ -156,6 +156,7 @@ public class AdminController {
             case "CONFIRMED" -> "待入住";
             case "COMPLETED" -> "已完成";
             case "CANCELLED" -> "已取消";
+            case "REFUND_REQUESTED" -> "退款中";
             case "REFUNDED" -> "已退款";
             default -> safeText(status);
         };

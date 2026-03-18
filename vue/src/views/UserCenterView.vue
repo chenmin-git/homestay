@@ -15,6 +15,7 @@ const orderStatusTextMap = {
   CONFIRMED: '待入住',
   COMPLETED: '已完成',
   CANCELLED: '已取消',
+  REFUND_REQUESTED: '退款中',
   REFUNDED: '已退款'
 }
 
@@ -64,7 +65,7 @@ const payOrder = async (id) => {
 
 const cancelOrder = async (id) => {
   try {
-    await ElMessageBox.confirm('确定要取消该订单吗？已支付订单取消后将原路退回。', '提示', {
+    await ElMessageBox.confirm('确定要取消该订单吗？', '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
@@ -74,7 +75,24 @@ const cancelOrder = async (id) => {
     await loadAll()
   } catch (e) {
     if (e !== 'cancel') {
-      ElMessage.error(e.response?.data?.message || '操作失败')
+      ElMessage.error(e.message || '操作失败')
+    }
+  }
+}
+
+const refundOrder = async (id) => {
+  try {
+    await ElMessageBox.confirm('确定要发起退款吗？需要管理员审核后退款。', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await http.post(`/user/orders/${id}/refund`)
+    ElMessage.success('退款申请已提交')
+    await loadAll()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error(e.message || '操作失败')
     }
   }
 }
@@ -178,7 +196,9 @@ const closeProfileDialog = () => {
             <template #default="{ row }">
               <div class="chip-list">
                 <el-button v-if="row.orderStatus === 'PENDING_PAYMENT'" size="small" type="primary" @click="payOrder(row.id)">支付</el-button>
-                <el-button v-if="row.orderStatus === 'PENDING_PAYMENT' || row.orderStatus === 'PAID'" size="small" @click="cancelOrder(row.id)">取消</el-button>
+                <el-button v-if="row.orderStatus === 'PENDING_PAYMENT'" size="small" @click="cancelOrder(row.id)">取消</el-button>
+                <el-button v-if="row.orderStatus === 'PAID' || row.orderStatus === 'CONFIRMED'" size="small" type="danger" @click="refundOrder(row.id)">退款</el-button>
+                <el-tag v-if="row.orderStatus === 'REFUND_REQUESTED'" type="warning">退款中</el-tag>
                 <el-button v-if="row.orderStatus === 'PAID' || row.orderStatus === 'CONFIRMED'" size="small" type="success" @click="completeOrder(row.id)">完成</el-button>
                 <el-button v-if="row.orderStatus === 'COMPLETED' && !row.reviewed" size="small" type="warning" @click="openReviewDialog(row)">评价</el-button>
                 <el-tag v-if="row.reviewed" type="info">已评价</el-tag>
@@ -227,7 +247,7 @@ const closeProfileDialog = () => {
       <div class="panel form-panel">
         <h3 style="margin-top: 0;">系统提示</h3>
         <p class="muted">已完成的订单点击操作列的“评价”按钮即可进行评分与晒图。</p>
-        <p class="muted">取消已支付订单需在入住日期前一天 24:00 前操作。</p>
+        <p class="muted">已支付订单可发起退款申请，最迟入住当天 12:00 前可提交，需管理员审核后完成。</p>
       </div>
     </aside>
 

@@ -23,6 +23,8 @@ import com.homestay.repository.RoomRepository;
 import com.homestay.repository.UserRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -175,19 +177,32 @@ public class UserCenterService {
     @Transactional
     public Map<String, Object> cancelOrder(User user, Long orderId) {
         BookingOrder order = ownOrder(user, orderId);
-        if (!(order.getOrderStatus() == OrderStatus.PENDING_PAYMENT || order.getOrderStatus() == OrderStatus.PAID)) {
-            throw new BusinessException("当前订单不可取消");
-        }
-        if (order.getOrderStatus() == OrderStatus.PAID) {
-            LocalDate now = LocalDate.now();
-            if (!order.getCheckInDate().isAfter(now)) {
-                throw new BusinessException("入住当天及之后不可取消已支付订单，如需退款请联系房东");
-            }
+        if (order.getOrderStatus() != OrderStatus.PENDING_PAYMENT) {
+            throw new BusinessException("已支付订单请发起退款");
         }
         order.setOrderStatus(OrderStatus.CANCELLED);
-        if (order.getPaymentStatus() == PaymentStatus.PAID) {
-            order.setPaymentStatus(PaymentStatus.REFUNDED);
+        bookingOrderRepository.save(order);
+        return orderSummary(order);
+    }
+
+    @Transactional
+    public Map<String, Object> refundOrder(User user, Long orderId) {
+        BookingOrder order = ownOrder(user, orderId);
+        if (order.getOrderStatus() == OrderStatus.REFUND_REQUESTED) {
+            throw new BusinessException("退款申请已提交");
         }
+        if (order.getOrderStatus() == OrderStatus.REFUNDED) {
+            throw new BusinessException("订单已退款");
+        }
+        if (!(order.getOrderStatus() == OrderStatus.PAID || order.getOrderStatus() == OrderStatus.CONFIRMED)) {
+            throw new BusinessException("当前订单不可退款");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime cutoff = order.getCheckInDate().atTime(LocalTime.NOON);
+        if (!now.isBefore(cutoff)) {
+            throw new BusinessException("最迟可在入住当天中午 12:00 前申请退款");
+        }
+        order.setOrderStatus(OrderStatus.REFUND_REQUESTED);
         bookingOrderRepository.save(order);
         return orderSummary(order);
     }

@@ -19,6 +19,7 @@ const orderStatusTextMap = {
   CONFIRMED: '待入住',
   COMPLETED: '已完成',
   CANCELLED: '已取消',
+  REFUND_REQUESTED: '退款中',
   REFUNDED: '已退款'
 }
 
@@ -436,7 +437,7 @@ const exportOrders = async () => {
 
 const canConfirmOrder = (order) => order?.orderStatus === 'PAID'
 const canRefundOrder = (order) =>
-  ['ADMIN', 'HOST'].includes(authStore.user?.role) && ['PAID', 'CONFIRMED'].includes(order?.orderStatus)
+  ['ADMIN', 'HOST'].includes(authStore.user?.role) && order?.orderStatus === 'REFUND_REQUESTED'
 
 const toggleUser = async (id, type) => {
   await http.post(`/admin/users/${id}/${type}`)
@@ -868,7 +869,7 @@ onMounted(loadAll)
             <template #default="{ row }">
               <div class="chip-list">
                 <el-button v-if="canConfirmOrder(row)" size="small" type="primary" @click="confirmOrder(row.id)">确认</el-button>
-                <el-button v-if="canRefundOrder(row)" size="small" @click="refundOrder(row.id)">退款</el-button>
+                <el-button v-if="canRefundOrder(row)" size="small" @click="refundOrder(row.id)">同意退款</el-button>
               </div>
             </template>
           </el-table-column>

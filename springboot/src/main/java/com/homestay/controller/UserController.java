@@ -76,6 +76,11 @@ public class UserController {
         return ApiResponse.ok("订单已取消", userCenterService.cancelOrder(currentUser(), orderId));
     }
 
+    @PostMapping("/orders/{orderId}/refund")
+    public ApiResponse<?> refundOrder(@PathVariable Long orderId) {
+        return ApiResponse.ok("退款申请已提交", userCenterService.refundOrder(currentUser(), orderId));
+    }
+
     @PostMapping("/orders/{orderId}/complete")
     public ApiResponse<?> completeOrder(@PathVariable Long orderId) {
         return ApiResponse.ok("订单已完成", userCenterService.completeOrder(currentUser(), orderId));
