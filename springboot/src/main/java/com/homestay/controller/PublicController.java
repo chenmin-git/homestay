@@ -5,7 +5,6 @@ import com.homestay.security.JwtUserPrincipal;
 import com.homestay.service.PortalService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,10 +16,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/public")
-@RequiredArgsConstructor
 public class PublicController {
 
     private final PortalService portalService;
+
+    public PublicController(PortalService portalService) {
+        this.portalService = portalService;
+    }
 
     @GetMapping("/home")
     public ApiResponse<?> home() {
@@ -34,10 +36,14 @@ public class PublicController {
         @RequestParam(required = false) BigDecimal minPrice,
         @RequestParam(required = false) BigDecimal maxPrice,
         @RequestParam(required = false) String houseType,
+        @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate checkInDate,
+        @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate checkOutDate,
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "8") int size
     ) {
-        return ApiResponse.ok(portalService.search(city, keyword, minPrice, maxPrice, houseType, page, size, currentUserId()));
+        return ApiResponse.ok(portalService.search(
+            city, keyword, minPrice, maxPrice, houseType, checkInDate, checkOutDate, page, size, currentUserId()
+        ));
     }
 
     @GetMapping("/homestays/{id}")
@@ -56,7 +62,8 @@ public class PublicController {
 
     private Long currentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.getPrincipal() instanceof JwtUserPrincipal principal) {
+        if (authentication != null && authentication.getPrincipal() instanceof JwtUserPrincipal) {
+            JwtUserPrincipal principal = (JwtUserPrincipal) authentication.getPrincipal();
             return principal.userId();
         }
         return null;

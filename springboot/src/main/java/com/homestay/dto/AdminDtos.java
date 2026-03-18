@@ -12,6 +12,7 @@ public final class AdminDtos {
     }
 
     public record RoomForm(
+        Long id,
         @NotBlank String roomNo,
         @NotBlank String roomType,
         @NotNull Integer floorNo,
@@ -41,5 +42,27 @@ public final class AdminDtos {
     }
 
     public record ReviewReplyRequest(@NotBlank String replyContent) {
+    }
+
+    public record BannerSaveRequest(
+        String title,
+        @NotBlank String imageUrl,
+        String linkUrl,
+        Integer sortOrder,
+        Boolean enabled
+    ) {
+    }
+
+    public record NoticeSaveRequest(
+        @NotBlank String title,
+        @NotBlank String content,
+        Boolean published
+    ) {
+    }
+
+    public record PasswordChangeRequest(
+        @NotBlank String oldPassword,
+        @NotBlank String newPassword
+    ) {
     }
 }

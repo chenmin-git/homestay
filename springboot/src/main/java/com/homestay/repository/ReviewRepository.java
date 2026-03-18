@@ -11,6 +11,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ReviewRepository extends JpaRepository<Review, Long> {
     List<Review> findByHomestayAndStatusOrderByCreatedAtDesc(Homestay homestay, ReviewStatus status);
 
+    List<Review> findByHomestayOrderByCreatedAtDesc(Homestay homestay);
+
     List<Review> findAllByOrderByCreatedAtDesc();
 
     Optional<Review> findByOrder(BookingOrder order);

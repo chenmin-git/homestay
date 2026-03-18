@@ -30,12 +30,11 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@RequiredArgsConstructor
 public class PortalService {
 
     private static final List<OrderStatus> ACTIVE_ORDER_STATUSES = List.of(
@@ -56,6 +55,30 @@ public class PortalService {
     private final FavoriteRepository favoriteRepository;
     private final UserRepository userRepository;
 
+    public PortalService(
+        BannerRepository bannerRepository,
+        NoticeRepository noticeRepository,
+        HomestayRepository homestayRepository,
+        HomestayImageRepository homestayImageRepository,
+        ReviewRepository reviewRepository,
+        RoomRepository roomRepository,
+        BookingOrderRepository bookingOrderRepository,
+        BookingOrderRoomRepository bookingOrderRoomRepository,
+        FavoriteRepository favoriteRepository,
+        UserRepository userRepository
+    ) {
+        this.bannerRepository = bannerRepository;
+        this.noticeRepository = noticeRepository;
+        this.homestayRepository = homestayRepository;
+        this.homestayImageRepository = homestayImageRepository;
+        this.reviewRepository = reviewRepository;
+        this.roomRepository = roomRepository;
+        this.bookingOrderRepository = bookingOrderRepository;
+        this.bookingOrderRoomRepository = bookingOrderRoomRepository;
+        this.favoriteRepository = favoriteRepository;
+        this.userRepository = userRepository;
+    }
+
     public Map<String, Object> homeData() {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("banners", bannerRepository.findByEnabledTrueOrderBySortOrderAsc().stream().map(this::bannerSummary).toList());
@@ -68,25 +91,70 @@ public class PortalService {
         return data;
     }
 
-    public Map<String, Object> search(String city, String keyword, BigDecimal minPrice, BigDecimal maxPrice, String houseType, int page, int size, Long userId) {
+    public Map<String, Object> search(
+        String city,
+        String keyword,
+        BigDecimal minPrice,
+        BigDecimal maxPrice,
+        String houseType,
+        LocalDate checkInDate,
+        LocalDate checkOutDate,
+        int page,
+        int size,
+        Long userId
+    ) {
+        String normalizedCity = emptyToNull(city);
+        String normalizedKeyword = emptyToNull(keyword);
+        String normalizedHouseType = emptyToNull(houseType);
+        int pageNumber = Math.max(page, 0);
+        int pageSize = Math.max(size, 1);
+        User user = loadUserNullable(userId);
+
+        if (checkInDate != null && checkOutDate != null) {
+            if (!checkOutDate.isAfter(checkInDate)) {
+                throw new BusinessException("退房日期必须晚于入住日期");
+            }
+
+            List<Map<String, Object>> matched = homestayRepository.searchAll(
+                HomestayStatus.ONLINE,
+                normalizedCity,
+                normalizedKeyword,
+                minPrice,
+                maxPrice,
+                normalizedHouseType
+            ).stream()
+                .map(homestay -> homestayCard(homestay, user, countAvailableRooms(homestay, checkInDate, checkOutDate)))
+                .filter(item -> Integer.parseInt(String.valueOf(item.get("availableRoomCount"))) > 0)
+                .toList();
+
+            int fromIndex = Math.min(pageNumber * pageSize, matched.size());
+            int toIndex = Math.min(fromIndex + pageSize, matched.size());
+            return Map.of(
+                "content", matched.subList(fromIndex, toIndex),
+                "page", pageNumber,
+                "size", pageSize,
+                "total", matched.size()
+            );
+        }
+
         var result = homestayRepository.search(
             HomestayStatus.ONLINE,
-            emptyToNull(city),
-            emptyToNull(keyword),
+            normalizedCity,
+            normalizedKeyword,
             minPrice,
             maxPrice,
-            emptyToNull(houseType),
-            PageRequest.of(Math.max(page, 0), Math.max(size, 1))
+            normalizedHouseType,
+            PageRequest.of(pageNumber, pageSize)
         );
-        User user = loadUserNullable(userId);
         return Map.of(
-            "content", result.getContent().stream().map(h -> homestayCard(h, user)).toList(),
+            "content", result.getContent().stream().map(h -> homestayCard(h, user, null)).toList(),
             "page", result.getNumber(),
             "size", result.getSize(),
             "total", result.getTotalElements()
         );
     }
 
+    @Transactional(readOnly = true)
     public Map<String, Object> homestayDetail(Long homestayId, Long userId) {
         Homestay homestay = homestayRepository.findById(homestayId)
             .orElseThrow(() -> new BusinessException("房源不存在"));
@@ -162,15 +230,20 @@ public class PortalService {
             .toList();
     }
 
+    @Transactional(readOnly = true)
     public Map<String, Object> favorites(User user) {
         List<Map<String, Object>> items = favoriteRepository.findByUserOrderByCreatedAtDesc(user).stream()
             .map(Favorite::getHomestay)
-            .map(h -> homestayCard(h, user))
+            .map(h -> homestayCard(h, user, null))
             .toList();
         return Map.of("content", items);
     }
 
     public Map<String, Object> homestayCard(Homestay homestay, User user) {
+        return homestayCard(homestay, user, null);
+    }
+
+    public Map<String, Object> homestayCard(Homestay homestay, User user, Integer availableRoomCount) {
         boolean favorite = user != null && favoriteRepository.findByUserAndHomestay(user, homestay).isPresent();
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("id", homestay.getId());
@@ -186,6 +259,7 @@ public class PortalService {
         data.put("bookingCount", homestay.getBookingCount());
         data.put("favorite", favorite);
         data.put("summary", homestay.getSummary());
+        data.put("availableRoomCount", availableRoomCount);
         return data;
     }
 
@@ -205,6 +279,21 @@ public class PortalService {
             return null;
         }
         return userRepository.findById(userId).orElse(null);
+    }
+
+    private int countAvailableRooms(Homestay homestay, LocalDate checkInDate, LocalDate checkOutDate) {
+        List<Room> rooms = roomRepository.findByHomestayAndEnabledTrueOrderByRoomNoAsc(homestay);
+        if (rooms.isEmpty()) {
+            return 0;
+        }
+        List<Long> roomIds = rooms.stream().map(Room::getId).toList();
+        List<BookingOrder> conflicts = bookingOrderRepository.findConflictingOrders(roomIds, checkInDate, checkOutDate, ACTIVE_ORDER_STATUSES);
+        List<Long> unavailableRoomIds = conflicts.stream()
+            .flatMap(order -> bookingOrderRoomRepository.findByOrder(order).stream())
+            .map(item -> item.getRoom().getId())
+            .distinct()
+            .toList();
+        return (int) rooms.stream().filter(room -> !unavailableRoomIds.contains(room.getId())).count();
     }
 
     private Map<String, Object> reviewSummary(Review review) {

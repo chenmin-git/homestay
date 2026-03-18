@@ -12,5 +12,7 @@ public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
 
     List<Favorite> findByUserOrderByCreatedAtDesc(User user);
 
+    List<Favorite> findByHomestay(Homestay homestay);
+
     long countByHomestay(Homestay homestay);
 }

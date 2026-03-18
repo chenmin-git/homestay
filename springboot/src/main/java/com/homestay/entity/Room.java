@@ -7,11 +7,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
-import lombok.Getter;
-import lombok.Setter;
 
-@Getter
-@Setter
 @Entity
 @Table(name = "room")
 public class Room extends BaseEntity {
@@ -40,4 +36,68 @@ public class Room extends BaseEntity {
 
     @Column(nullable = false)
     private Boolean enabled = true;
+
+    public Homestay getHomestay() {
+        return homestay;
+    }
+
+    public void setHomestay(Homestay homestay) {
+        this.homestay = homestay;
+    }
+
+    public String getRoomNo() {
+        return roomNo;
+    }
+
+    public void setRoomNo(String roomNo) {
+        this.roomNo = roomNo;
+    }
+
+    public String getRoomType() {
+        return roomType;
+    }
+
+    public void setRoomType(String roomType) {
+        this.roomType = roomType;
+    }
+
+    public Integer getFloorNo() {
+        return floorNo;
+    }
+
+    public void setFloorNo(Integer floorNo) {
+        this.floorNo = floorNo;
+    }
+
+    public BigDecimal getPrice() {
+        return price;
+    }
+
+    public void setPrice(BigDecimal price) {
+        this.price = price;
+    }
+
+    public Integer getBedCount() {
+        return bedCount;
+    }
+
+    public void setBedCount(Integer bedCount) {
+        this.bedCount = bedCount;
+    }
+
+    public Integer getCapacity() {
+        return capacity;
+    }
+
+    public void setCapacity(Integer capacity) {
+        this.capacity = capacity;
+    }
+
+    public Boolean getEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(Boolean enabled) {
+        this.enabled = enabled;
+    }
 }

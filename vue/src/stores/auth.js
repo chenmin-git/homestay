@@ -28,6 +28,11 @@ export const useAuthStore = defineStore('auth', {
       localStorage.setItem('homestay-token', data.token)
       localStorage.setItem('homestay-user', JSON.stringify(data.user))
     },
+    updateUser(patch) {
+      if (!this.user) return
+      this.user = { ...this.user, ...patch }
+      localStorage.setItem('homestay-user', JSON.stringify(this.user))
+    },
     logout() {
       this.token = ''
       this.user = null

@@ -11,9 +11,9 @@ public final class SecurityUtils {
 
     public static JwtUserPrincipal currentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !(authentication.getPrincipal() instanceof JwtUserPrincipal principal)) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof JwtUserPrincipal)) {
             throw new BusinessException("请先登录");
         }
-        return principal;
+        return (JwtUserPrincipal) authentication.getPrincipal();
     }
 }

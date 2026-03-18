@@ -10,7 +10,6 @@ import com.homestay.security.SecurityUtils;
 import com.homestay.service.PortalService;
 import com.homestay.service.UserCenterService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,12 +20,21 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/user")
-@RequiredArgsConstructor
 public class UserController {
 
     private final UserRepository userRepository;
     private final UserCenterService userCenterService;
     private final PortalService portalService;
+
+    public UserController(
+        UserRepository userRepository,
+        UserCenterService userCenterService,
+        PortalService portalService
+    ) {
+        this.userRepository = userRepository;
+        this.userCenterService = userCenterService;
+        this.portalService = portalService;
+    }
 
     @GetMapping("/profile")
     public ApiResponse<?> profile() {

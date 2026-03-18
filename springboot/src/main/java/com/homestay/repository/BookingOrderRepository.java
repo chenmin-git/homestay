@@ -20,15 +20,13 @@ public interface BookingOrderRepository extends JpaRepository<BookingOrder, Long
 
     long countByCreatedAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end);
 
-    @Query("""
-        select o from BookingOrder o
-        where o.orderStatus in :activeStatuses
-          and o.id in (
-            select bor.order.id from BookingOrderRoom bor where bor.room.id in :roomIds
-          )
-          and o.checkInDate < :checkOutDate
-          and o.checkOutDate > :checkInDate
-        """)
+    @Query("select o from BookingOrder o " +
+           "where o.orderStatus in :activeStatuses " +
+           "  and o.id in ( " +
+           "    select bor.order.id from BookingOrderRoom bor where bor.room.id in :roomIds " +
+           "  ) " +
+           "  and o.checkInDate < :checkOutDate " +
+           "  and o.checkOutDate > :checkInDate")
     List<BookingOrder> findConflictingOrders(
         @Param("roomIds") List<Long> roomIds,
         @Param("checkInDate") LocalDate checkInDate,

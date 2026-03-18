@@ -28,12 +28,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@RequiredArgsConstructor
 public class UserCenterService {
 
     private final UserRepository userRepository;
@@ -44,6 +42,26 @@ public class UserCenterService {
     private final FavoriteRepository favoriteRepository;
     private final ReviewRepository reviewRepository;
     private final PortalService portalService;
+
+    public UserCenterService(
+        UserRepository userRepository,
+        HomestayRepository homestayRepository,
+        RoomRepository roomRepository,
+        BookingOrderRepository bookingOrderRepository,
+        BookingOrderRoomRepository bookingOrderRoomRepository,
+        FavoriteRepository favoriteRepository,
+        ReviewRepository reviewRepository,
+        PortalService portalService
+    ) {
+        this.userRepository = userRepository;
+        this.homestayRepository = homestayRepository;
+        this.roomRepository = roomRepository;
+        this.bookingOrderRepository = bookingOrderRepository;
+        this.bookingOrderRoomRepository = bookingOrderRoomRepository;
+        this.favoriteRepository = favoriteRepository;
+        this.reviewRepository = reviewRepository;
+        this.portalService = portalService;
+    }
 
     public Map<String, Object> profile(User user) {
         return Map.of(
@@ -135,6 +153,7 @@ public class UserCenterService {
         return orderSummary(order);
     }
 
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> orders(User user) {
         return bookingOrderRepository.findByUserOrderByCreatedAtDesc(user).stream()
             .map(this::orderSummary)
@@ -158,6 +177,12 @@ public class UserCenterService {
         BookingOrder order = ownOrder(user, orderId);
         if (!(order.getOrderStatus() == OrderStatus.PENDING_PAYMENT || order.getOrderStatus() == OrderStatus.PAID)) {
             throw new BusinessException("当前订单不可取消");
+        }
+        if (order.getOrderStatus() == OrderStatus.PAID) {
+            LocalDate now = LocalDate.now();
+            if (!order.getCheckInDate().isAfter(now)) {
+                throw new BusinessException("入住当天及之后不可取消已支付订单，如需退款请联系房东");
+            }
         }
         order.setOrderStatus(OrderStatus.CANCELLED);
         if (order.getPaymentStatus() == PaymentStatus.PAID) {
