@@ -1,0 +1,9 @@
+.run/
+.tools/
+.playwright-mcp/
+*.log
+hs_err_pid*.log
+replay_pid*.log
+springboot/build*.log
+springboot/build_output*.txt
+springboot/uploads/
