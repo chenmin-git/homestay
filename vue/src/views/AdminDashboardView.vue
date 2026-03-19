@@ -94,11 +94,11 @@ const createHomestayDraft = () => ({
   facilities: '空调,投影,停车位',
   latitude: 30.2401,
   longitude: 120.1503,
-  coverImage: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80',
+  coverImage: '/assets/photos/photo-1505693416388.jpg',
   summary: '适合课程设计演示的新房源样例',
   description: '房东可以在后台维护多张图片与多个房间，并按真实房号管理库存。',
   images: [
-    'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80'
+    '/assets/photos/photo-1505693416388.jpg'
   ],
   rooms: [
     createRoomItem({ roomNo: 'D101', roomType: '大床房', floorNo: 1, price: 468, bedCount: 1, capacity: 2 }),

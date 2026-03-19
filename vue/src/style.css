@@ -259,7 +259,7 @@ a {
   overflow: hidden;
   background:
     linear-gradient(120deg, rgba(255, 250, 243, 0.92), rgba(245, 229, 214, 0.88)),
-    url('https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1400&q=80') center/cover;
+    url('/assets/photos/photo-1505693416388.jpg') center/cover;
 }
 
 .hero-card::after {

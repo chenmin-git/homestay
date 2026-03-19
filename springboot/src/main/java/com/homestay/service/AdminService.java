@@ -528,11 +528,11 @@ public class AdminService {
         User host2 = userRepository.findByUsername("host2").orElse(host);
 
         ensureBanner("山海轻居",
-            "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80", 1);
+            "/assets/photos/photo-1505693416388.jpg", 1);
         ensureBanner("江南院落",
-            "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=80", 2);
+            "/assets/photos/photo-1522708323590.jpg", 2);
         ensureBanner("城市周末",
-            "https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=1200&q=80", 3);
+            "/assets/photos/photo-1494526585095.jpg", 3);
 
         ensureNotice("春季活动", "连续入住两晚可享接站服务，支持按房号选择房间。");
         ensureNotice("房态升级", "后台支持按真实房号查看占用情况，适合课程设计演示。");
@@ -541,50 +541,58 @@ public class AdminService {
         Homestay villa = ensureHomestay(host, "云栖海景别院", "三亚", "海棠湾", "海棠湾林旺大道 18 号",
             BigDecimal.valueOf(688), 4, "整栋别墅", "海景,泳池,家庭聚会", "泳池,厨房,停车位,洗衣机,投影",
             18.3197, 109.7514,
-            "https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?auto=format&fit=crop&w=1200&q=80",
+            "/assets/photos/photo-1499793983690.jpg",
             "适合家庭出游的临海别院，支持按房号预订。",
             "房东可以管理多间客房，用户下单时可直接选择具体房号，避免一房源只能住一组客人的老旧模式。");
         ensureRoom(villa, "A101", "海景大床房", 1, 688, 1, 2);
         ensureRoom(villa, "A102", "海景双床房", 1, 728, 2, 3);
         ensureRoom(villa, "B201", "泳池亲子房", 2, 888, 2, 4);
         ensureRoom(villa, "B202", "露台套房", 2, 998, 1, 2);
-        ensureImage(villa, "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80", 1);
-        ensureImage(villa, "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80", 2);
+        ensureImages(villa, List.of(
+            "/assets/photos/photo-1505693416388.jpg",
+            "/assets/photos/photo-1505693416388.jpg"
+        ));
 
         Homestay courtyard = ensureHomestay(host, "山居慢宿", "丽江", "束河古镇", "束河古镇清泉路 9 号",
             BigDecimal.valueOf(368), 3, "Loft", "古镇,庭院,安静", "地暖,茶室,接送机,投影",
             26.9252, 100.2050,
-            "https://images.unsplash.com/photo-1502005229762-cf1b2da7c5d6?auto=format&fit=crop&w=1200&q=80",
+            "/assets/photos/photo-1502005229762.jpg",
             "古镇边上的安静院落，适合情侣与小团体。",
             "支持房东发布多间房源并单独维护房态日历。");
         ensureRoom(courtyard, "C301", "庭院大床房", 3, 368, 1, 2);
         ensureRoom(courtyard, "C302", "观景双床房", 3, 428, 2, 2);
         ensureRoom(courtyard, "C303", "Loft 家庭房", 3, 518, 2, 4);
-        ensureImage(courtyard, "https://images.unsplash.com/photo-1502005229762-cf1b2da7c5d6?auto=format&fit=crop&w=1200&q=80", 1);
-        ensureImage(courtyard, "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=80", 2);
+        ensureImages(courtyard, List.of(
+            "/assets/photos/photo-1502005229762.jpg",
+            "/assets/photos/photo-1522708323590.jpg"
+        ));
 
         Homestay cityStay = ensureHomestay(host2, "城景轻奢公寓", "上海", "静安区", "南京西路 188 号",
             BigDecimal.valueOf(588), 3, "城市公寓", "地铁旁,商旅,高层夜景", "电梯,投影,洗衣机,健身房",
             31.2304, 121.4737,
-            "https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=1200&q=80",
+            "/assets/photos/photo-1494526585095.jpg",
             "适合短住与商务出差的高层公寓，支持按房号库存管理。",
             "房东可以维护不同朝向与床型的多个房间，避免城市民宿常见的一套房只能接一单。");
         ensureRoom(cityStay, "S1101", "商务大床房", 11, 588, 1, 2);
         ensureRoom(cityStay, "S1102", "双床商务房", 11, 628, 2, 2);
         ensureRoom(cityStay, "S1201", "城景套房", 12, 788, 1, 3);
-        ensureImage(cityStay, "https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=1200&q=80", 1);
-        ensureImage(cityStay, "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80", 2);
+        ensureImages(cityStay, List.of(
+            "/assets/photos/photo-1494526585095.jpg",
+            "/assets/photos/photo-1505693416388.jpg"
+        ));
 
         Homestay lakeVilla = ensureHomestay(host2, "湖畔亲子小院", "杭州", "余杭区", "瓶窑镇山水路 66 号",
             BigDecimal.valueOf(428), 2, "亲子庭院", "亲子,露台,烧烤", "庭院,儿童玩具,厨房,停车位",
             30.3542, 119.9781,
-            "https://images.unsplash.com/photo-1523217582562-09d0def993a6?auto=format&fit=crop&w=1200&q=80",
+            "/assets/photos/photo-1523217582562.jpg",
             "适合周末亲子出游的小院，房东可独立维护每个房号。",
             "既能满足家庭包院，也能按真实房间库存出售，不会因一笔订单就整套停售。");
         ensureRoom(lakeVilla, "H201", "亲子套房", 2, 428, 2, 3);
         ensureRoom(lakeVilla, "H202", "湖景家庭房", 2, 498, 2, 4);
-        ensureImage(lakeVilla, "https://images.unsplash.com/photo-1523217582562-09d0def993a6?auto=format&fit=crop&w=1200&q=80", 1);
-        ensureImage(lakeVilla, "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80", 2);
+        ensureImages(lakeVilla, List.of(
+            "/assets/photos/photo-1523217582562.jpg",
+            "/assets/photos/photo-1505693416388.jpg"
+        ));
 
         BookingOrder paidOrder = ensureOrder(
             "HSDEMO202603180001", admin, villa,
@@ -651,15 +659,23 @@ public class AdminService {
     }
 
     private void ensureBanner(String title, String imageUrl, int sortOrder) {
-        boolean exists = bannerRepository.findAll().stream().anyMatch(item -> title.equals(item.getTitle()));
-        if (exists) {
+        Banner banner = bannerRepository.findAll().stream()
+            .filter(item -> title.equals(item.getTitle()))
+            .findFirst()
+            .orElse(null);
+        if (banner != null) {
+            if (isRemoteUrl(banner.getImageUrl())) {
+                banner.setImageUrl(imageUrl);
+                banner.setSortOrder(sortOrder);
+                bannerRepository.save(banner);
+            }
             return;
         }
-        Banner banner = new Banner();
-        banner.setTitle(title);
-        banner.setImageUrl(imageUrl);
-        banner.setSortOrder(sortOrder);
-        bannerRepository.save(banner);
+        Banner created = new Banner();
+        created.setTitle(title);
+        created.setImageUrl(imageUrl);
+        created.setSortOrder(sortOrder);
+        bannerRepository.save(created);
     }
 
     private void ensureNotice(String title, String content) {
@@ -698,6 +714,10 @@ public class AdminService {
                     existing.setHost(host);
                     return homestayRepository.save(existing);
                 }
+                if (isRemoteUrl(existing.getCoverImage())) {
+                    existing.setCoverImage(cover);
+                    return homestayRepository.save(existing);
+                }
                 return existing;
             })
             .orElseGet(() -> createHomestay(host, name, city, district, address, price, rooms, houseType, tags, facilities, lat, lng, cover, summary, description));
@@ -716,11 +736,22 @@ public class AdminService {
         }
     }
 
-    private void ensureImage(Homestay homestay, String imageUrl, int sortOrder) {
-        boolean exists = homestayImageRepository.findByHomestayOrderBySortOrderAsc(homestay).stream()
-            .anyMatch(item -> imageUrl.equals(item.getImageUrl()));
-        if (!exists) {
-            createImage(homestay, imageUrl, sortOrder);
+    private void ensureImages(Homestay homestay, List<String> imageUrls) {
+        List<HomestayImage> existing = homestayImageRepository.findByHomestayOrderBySortOrderAsc(homestay);
+        if (existing.isEmpty() || existing.stream().anyMatch(item -> isRemoteUrl(item.getImageUrl()))) {
+            homestayImageRepository.deleteAll(existing);
+            int sortOrder = 1;
+            for (String imageUrl : imageUrls) {
+                createImage(homestay, imageUrl, sortOrder++);
+            }
+            return;
+        }
+        for (int i = 0; i < imageUrls.size(); i++) {
+            String imageUrl = imageUrls.get(i);
+            boolean exists = existing.stream().anyMatch(item -> imageUrl.equals(item.getImageUrl()));
+            if (!exists) {
+                createImage(homestay, imageUrl, i + 1);
+            }
         }
     }
 
@@ -1105,5 +1136,9 @@ public class AdminService {
         image.setImageUrl(imageUrl);
         image.setSortOrder(sortOrder);
         homestayImageRepository.save(image);
+    }
+
+    private boolean isRemoteUrl(String url) {
+        return url != null && (url.startsWith("http://") || url.startsWith("https://"));
     }
 }
