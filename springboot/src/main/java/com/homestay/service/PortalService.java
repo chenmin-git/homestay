@@ -114,6 +114,9 @@ public class PortalService {
             if (!checkOutDate.isAfter(checkInDate)) {
                 throw new BusinessException("退房日期必须晚于入住日期");
             }
+            if (checkInDate.isBefore(LocalDate.now())) {
+                throw new BusinessException("入住日期不能早于今天");
+            }
 
             List<Map<String, Object>> matched = homestayRepository.searchAll(
                 HomestayStatus.ONLINE,
@@ -204,6 +207,9 @@ public class PortalService {
     public List<Map<String, Object>> availableRooms(Long homestayId, LocalDate checkInDate, LocalDate checkOutDate) {
         if (checkInDate == null || checkOutDate == null || !checkOutDate.isAfter(checkInDate)) {
             throw new BusinessException("入住与退房日期不合法");
+        }
+        if (checkInDate.isBefore(LocalDate.now())) {
+            throw new BusinessException("入住日期不能早于今天");
         }
         Homestay homestay = homestayRepository.findById(homestayId)
             .orElseThrow(() -> new BusinessException("房源不存在"));

@@ -219,6 +219,24 @@ public class UserCenterService {
     }
 
     @Transactional
+    public Map<String, Object> deleteOrder(User user, Long orderId) {
+        BookingOrder order = ownOrder(user, orderId);
+        if (!(order.getOrderStatus() == OrderStatus.COMPLETED
+            || order.getOrderStatus() == OrderStatus.CANCELLED
+            || order.getOrderStatus() == OrderStatus.REFUNDED)) {
+            throw new BusinessException("当前订单不可删除");
+        }
+
+        reviewRepository.findByOrder(order).ifPresent(review -> {
+            reviewRepository.delete(review);
+            portalService.recalculateHomestayRating(order.getHomestay());
+        });
+        bookingOrderRoomRepository.deleteAll(bookingOrderRoomRepository.findByOrder(order));
+        bookingOrderRepository.delete(order);
+        return Map.of("id", orderId, "deleted", true);
+    }
+
+    @Transactional
     public Map<String, Object> createReview(User user, ReviewCreateRequest request) {
         BookingOrder order = ownOrder(user, request.orderId());
         if (order.getOrderStatus() != OrderStatus.COMPLETED) {

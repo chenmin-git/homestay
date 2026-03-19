@@ -388,7 +388,7 @@ a {
 
 .admin-metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 24px;
 }
@@ -602,6 +602,10 @@ a {
   color: #8a4f2f;
   background: rgba(181, 101, 59, 0.14);
 }
+.legend-pill.unavailable {
+  color: #6f6f6f;
+  background: rgba(0, 0, 0, 0.08);
+}
 
 .calendar-bookings {
   grid-template-columns: 1fr;
@@ -635,13 +639,21 @@ a {
 .calendar-cell.occupied {
   background: rgba(181, 101, 59, 0.14);
 }
+.calendar-cell.unavailable {
+  background: rgba(0, 0, 0, 0.06);
+  color: #7a7a7a;
+}
+.calendar-cell.unavailable small {
+  color: #7a7a7a;
+}
 
 .login-shell {
   min-height: calc(100vh - 160px);
   display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
+  grid-template-columns: 1fr;
   gap: 24px;
-  align-items: stretch;
+  align-items: center;
+  justify-items: center;
 }
 
 .login-hero,
@@ -730,6 +742,7 @@ a {
 
 .login-panel {
   align-self: center;
+  width: min(100%, 520px);
 }
 
 .login-title {

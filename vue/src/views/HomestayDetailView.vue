@@ -20,6 +20,12 @@ const booking = reactive({
   remark: ''
 })
 
+const disablePastDate = (date) => {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return date.getTime() < today.getTime()
+}
+
 const nights = computed(() => {
   if (!booking.checkInDate || !booking.checkOutDate) return 0
   const start = new Date(booking.checkInDate).getTime()
@@ -292,10 +298,22 @@ onMounted(async () => {
 
           <el-form label-position="top" style="margin-top: 12px;">
             <el-form-item label="入住日期">
-              <el-date-picker v-model="booking.checkInDate" value-format="YYYY-MM-DD" type="date" class="full-width" />
+              <el-date-picker
+                v-model="booking.checkInDate"
+                value-format="YYYY-MM-DD"
+                type="date"
+                class="full-width"
+                :disabled-date="disablePastDate"
+              />
             </el-form-item>
             <el-form-item label="退房日期">
-              <el-date-picker v-model="booking.checkOutDate" value-format="YYYY-MM-DD" type="date" class="full-width" />
+              <el-date-picker
+                v-model="booking.checkOutDate"
+                value-format="YYYY-MM-DD"
+                type="date"
+                class="full-width"
+                :disabled-date="disablePastDate"
+              />
             </el-form-item>
             <el-button type="primary" color="#5b8870" class="full-width" @click="queryAvailability">查询可用房间</el-button>
             <el-form-item label="可选房号" style="margin-top: 16px;">

@@ -10,12 +10,14 @@ import com.homestay.entity.Banner;
 import com.homestay.entity.BookingOrder;
 import com.homestay.entity.BookingOrderRoom;
 import com.homestay.entity.Favorite;
+import com.homestay.entity.HostApplication;
 import com.homestay.entity.Homestay;
 import com.homestay.entity.HomestayImage;
 import com.homestay.entity.Notice;
 import com.homestay.entity.Review;
 import com.homestay.entity.Room;
 import com.homestay.entity.User;
+import com.homestay.enums.HostApplyStatus;
 import com.homestay.enums.HomestayStatus;
 import com.homestay.enums.OrderStatus;
 import com.homestay.enums.PaymentStatus;
@@ -25,6 +27,7 @@ import com.homestay.repository.BannerRepository;
 import com.homestay.repository.BookingOrderRepository;
 import com.homestay.repository.BookingOrderRoomRepository;
 import com.homestay.repository.FavoriteRepository;
+import com.homestay.repository.HostApplicationRepository;
 import com.homestay.repository.HomestayImageRepository;
 import com.homestay.repository.HomestayRepository;
 import com.homestay.repository.NoticeRepository;
@@ -33,6 +36,7 @@ import com.homestay.repository.RoomRepository;
 import com.homestay.repository.UserRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -56,6 +60,7 @@ public class AdminService {
     private final BannerRepository bannerRepository;
     private final NoticeRepository noticeRepository;
     private final FavoriteRepository favoriteRepository;
+    private final HostApplicationRepository hostApplicationRepository;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     public AdminService(
@@ -69,6 +74,7 @@ public class AdminService {
         BannerRepository bannerRepository,
         NoticeRepository noticeRepository,
         FavoriteRepository favoriteRepository,
+        HostApplicationRepository hostApplicationRepository,
         org.springframework.security.crypto.password.PasswordEncoder passwordEncoder
     ) {
         this.userRepository = userRepository;
@@ -81,6 +87,7 @@ public class AdminService {
         this.bannerRepository = bannerRepository;
         this.noticeRepository = noticeRepository;
         this.favoriteRepository = favoriteRepository;
+        this.hostApplicationRepository = hostApplicationRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -99,7 +106,12 @@ public class AdminService {
             .filter(item -> !item.getCreatedAt().isBefore(todayStart) && !item.getCreatedAt().isAfter(todayEnd))
             .count();
         BigDecimal sales = orders.stream()
-            .filter(item -> item.getPaymentStatus() == PaymentStatus.PAID || item.getPaymentStatus() == PaymentStatus.REFUNDED)
+            .filter(item -> item.getPaymentStatus() == PaymentStatus.PAID)
+            .map(BookingOrder::getTotalAmount)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal todaySales = orders.stream()
+            .filter(item -> item.getPaymentStatus() == PaymentStatus.PAID)
+            .filter(item -> !item.getCreatedAt().isBefore(todayStart) && !item.getCreatedAt().isAfter(todayEnd))
             .map(BookingOrder::getTotalAmount)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
         long newUsers = hostOnly
@@ -129,6 +141,7 @@ public class AdminService {
         long newComments = reviews.stream().filter(item -> item.getStatus() == ReviewStatus.APPROVED).count();
         return Map.of(
             "todayOrders", todayOrders,
+            "todaySales", todaySales,
             "totalSales", sales,
             "newUsers", newUsers,
             "orderTrend", orderTrend,
@@ -159,6 +172,7 @@ public class AdminService {
             data.put("orderNo", item.getOrderNo());
             data.put("username", item.getUser().getNickname());
             data.put("homestayName", item.getHomestay().getName());
+            data.put("createdAt", item.getCreatedAt());
             data.put("checkInDate", item.getCheckInDate());
             data.put("checkOutDate", item.getCheckOutDate());
             data.put("totalAmount", item.getTotalAmount());
@@ -180,6 +194,63 @@ public class AdminService {
             data.put("blacklisted", item.getBlacklisted());
             return data;
         }).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> hostApplications(User operator) {
+        ensureAdmin(operator);
+        return hostApplicationRepository.findAllByOrderByCreatedAtDesc().stream().map(item -> {
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("id", item.getId());
+            data.put("username", item.getUsername());
+            data.put("nickname", item.getNickname());
+            data.put("phone", item.getPhone());
+            data.put("status", item.getStatus().name());
+            data.put("createdAt", item.getCreatedAt());
+            data.put("reviewedAt", item.getReviewedAt());
+            return data;
+        }).toList();
+    }
+
+    @Transactional
+    public Map<String, Object> approveHostApplication(User operator, Long applicationId) {
+        ensureAdmin(operator);
+        HostApplication application = hostApplicationRepository.findById(applicationId)
+            .orElseThrow(() -> new BusinessException("申请不存在"));
+        if (application.getStatus() != HostApplyStatus.PENDING) {
+            throw new BusinessException("该申请已处理");
+        }
+        userRepository.findByUsername(application.getUsername()).ifPresent(user -> {
+            throw new BusinessException("用户名已存在");
+        });
+        User host = new User();
+        host.setUsername(application.getUsername());
+        host.setPassword(application.getPassword());
+        host.setNickname(application.getNickname());
+        host.setPhone(application.getPhone());
+        host.setRole(RoleType.HOST);
+        host.setEnabled(true);
+        host.setBlacklisted(false);
+        userRepository.save(host);
+
+        application.setStatus(HostApplyStatus.APPROVED);
+        application.setReviewedAt(LocalDateTime.now());
+        hostApplicationRepository.save(application);
+        return Map.of("id", application.getId(), "status", application.getStatus().name());
+    }
+
+    @Transactional
+    public Map<String, Object> rejectHostApplication(User operator, Long applicationId) {
+        ensureAdmin(operator);
+        HostApplication application = hostApplicationRepository.findById(applicationId)
+            .orElseThrow(() -> new BusinessException("申请不存在"));
+        if (application.getStatus() != HostApplyStatus.PENDING) {
+            throw new BusinessException("该申请已处理");
+        }
+        application.setStatus(HostApplyStatus.REJECTED);
+        application.setReviewedAt(LocalDateTime.now());
+        hostApplicationRepository.save(application);
+        return Map.of("id", application.getId(), "status", application.getStatus().name());
     }
 
     @Transactional(readOnly = true)
@@ -207,11 +278,15 @@ public class AdminService {
 
     @Transactional
     public Map<String, Object> createHomestay(User operator, HomestaySaveRequest request) {
+        String normalizedName = request.name().trim();
+        if (homestayRepository.existsByHostAndNameIgnoreCase(operator, normalizedName)) {
+            throw new BusinessException("同名房源已存在，请修改名称");
+        }
         Homestay homestay = new Homestay();
         homestay.setHost(operator);
         homestay.setRecommended(false);
         homestay.setLatestListed(true);
-        homestay.setStatus(HomestayStatus.ONLINE);
+        homestay.setStatus(operator.getRole() == RoleType.HOST ? HomestayStatus.DRAFT : HomestayStatus.ONLINE);
         applyHomestayBaseInfo(homestay, request);
         homestay = homestayRepository.save(homestay);
         saveHomestayImages(homestay, request.images());
@@ -223,7 +298,14 @@ public class AdminService {
     @Transactional
     public Map<String, Object> updateHomestay(User operator, Long homestayId, HomestaySaveRequest request) {
         Homestay homestay = loadOwnedHomestay(operator, homestayId);
+        String normalizedName = request.name().trim();
+        if (homestayRepository.existsByHostAndNameIgnoreCaseAndIdNot(homestay.getHost(), normalizedName, homestayId)) {
+            throw new BusinessException("同名房源已存在，请修改名称");
+        }
         applyHomestayBaseInfo(homestay, request);
+        if (operator.getRole() == RoleType.HOST) {
+            homestay.setStatus(HomestayStatus.DRAFT);
+        }
         homestayRepository.save(homestay);
         saveHomestayImages(homestay, request.images());
         syncRooms(homestay, request.rooms());
@@ -234,6 +316,14 @@ public class AdminService {
     @Transactional
     public Map<String, Object> toggleHomestayStatus(User operator, Long homestayId) {
         Homestay homestay = loadOwnedHomestay(operator, homestayId);
+        if (homestay.getStatus() == HomestayStatus.DRAFT) {
+            if (operator.getRole() != RoleType.ADMIN) {
+                throw new BusinessException("房源待审核，管理员审核后才能上架");
+            }
+            homestay.setStatus(HomestayStatus.ONLINE);
+            homestayRepository.save(homestay);
+            return Map.of("id", homestay.getId(), "status", homestay.getStatus().name());
+        }
         HomestayStatus nextStatus = homestay.getStatus() == HomestayStatus.ONLINE
             ? HomestayStatus.OFFLINE
             : HomestayStatus.ONLINE;
@@ -340,6 +430,9 @@ public class AdminService {
 
     @Transactional
     public Map<String, Object> confirmOrder(User operator, Long orderId) {
+        if (operator.getRole() != RoleType.HOST) {
+            throw new BusinessException("仅房东可确认入住");
+        }
         BookingOrder order = loadOwnedOrder(operator, orderId);
         order.setOrderStatus(OrderStatus.CONFIRMED);
         bookingOrderRepository.save(order);
@@ -348,6 +441,9 @@ public class AdminService {
 
     @Transactional
     public Map<String, Object> refundOrder(User operator, Long orderId) {
+        if (operator.getRole() != RoleType.HOST) {
+            throw new BusinessException("仅房东可处理退款");
+        }
         BookingOrder order = loadOwnedOrder(operator, orderId);
         if (order.getOrderStatus() != OrderStatus.REFUND_REQUESTED) {
             throw new BusinessException("请先由用户发起退款申请");
@@ -895,6 +991,12 @@ public class AdminService {
             throw new BusinessException("无权管理该订单");
         }
         return order;
+    }
+
+    private void ensureAdmin(User operator) {
+        if (operator.getRole() != RoleType.ADMIN) {
+            throw new BusinessException("无权操作");
+        }
     }
 
     private Review loadOwnedReview(User operator, Long reviewId) {

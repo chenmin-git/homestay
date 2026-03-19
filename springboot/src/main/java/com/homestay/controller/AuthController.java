@@ -1,6 +1,7 @@
 package com.homestay.controller;
 
 import com.homestay.common.ApiResponse;
+import com.homestay.dto.AuthDtos.HostApplyRequest;
 import com.homestay.dto.AuthDtos.LoginRequest;
 import com.homestay.dto.AuthDtos.RegisterRequest;
 import com.homestay.service.AuthService;
@@ -23,6 +24,11 @@ public class AuthController {
     @PostMapping("/register")
     public ApiResponse<?> register(@Valid @RequestBody RegisterRequest request) {
         return ApiResponse.ok("注册成功", authService.register(request));
+    }
+
+    @PostMapping("/host-apply")
+    public ApiResponse<?> hostApply(@Valid @RequestBody HostApplyRequest request) {
+        return ApiResponse.ok("申请已提交", authService.applyHost(request));
     }
 
     @PostMapping("/login")

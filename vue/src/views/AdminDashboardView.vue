@@ -10,7 +10,7 @@ import { useAuthStore } from '../stores/auth'
 const homestayStatusTextMap = {
   ONLINE: '上架中',
   OFFLINE: '已下架',
-  DRAFT: '草稿'
+  DRAFT: '待审核'
 }
 
 const orderStatusTextMap = {
@@ -29,6 +29,12 @@ const roleTextMap = {
   USER: '用户'
 }
 
+const hostApplyStatusTextMap = {
+  PENDING: '待审核',
+  APPROVED: '已通过',
+  REJECTED: '已拒绝'
+}
+
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
@@ -37,6 +43,7 @@ const orders = ref([])
 const users = ref([])
 const reviews = ref([])
 const homestays = ref([])
+const hostApplications = ref([])
 const chartRef = ref()
 const pieRef = ref()
 const editingHomestayId = ref(null)
@@ -54,6 +61,7 @@ const adminSections = computed(() => {
     { key: 'reviews', label: '评论管理', desc: '回复与隐藏评论' }
   ]
   if (authStore.user?.role === 'ADMIN') {
+    sections.push({ key: 'host-approvals', label: '房东审核', desc: '审核房东入驻申请' })
     sections.push({ key: 'settings', label: '系统设置', desc: '轮播图、公告与密码' })
     sections.push({ key: 'users', label: '用户管理', desc: '启用、禁用与黑名单' })
   }
@@ -129,18 +137,34 @@ const applyHomestayDraft = (draft) => {
 }
 
 const handleUploadSuccess = (response, type, index = null) => {
-  if (response.code === 200) {
+  const isOk = response?.success === true || response?.code === 200
+  const url = response?.data
+
+  if (isOk && url) {
     if (type === 'cover') {
-      homestayForm.coverImage = response.data
+      homestayForm.coverImage = url
     } else if (type === 'images' && index !== null) {
-      homestayForm.images[index] = response.data
+      homestayForm.images[index] = url
     } else if (type === 'banner' && index !== null) {
-      banners.value[index].imageUrl = response.data
+      banners.value[index].imageUrl = url
     }
     ElMessage.success('图片上传成功')
-  } else {
-    ElMessage.error(response.message || '上传失败')
+    return
   }
+
+  if (url) {
+    if (type === 'cover') {
+      homestayForm.coverImage = url
+    } else if (type === 'images' && index !== null) {
+      homestayForm.images[index] = url
+    } else if (type === 'banner' && index !== null) {
+      banners.value[index].imageUrl = url
+    }
+    ElMessage.success('图片上传成功')
+    return
+  }
+
+  ElMessage.error(response?.message || '上传失败')
 }
 
 // 地图拾取相关
@@ -343,20 +367,25 @@ const loadAll = async () => {
 const submitHomestay = async () => {
   const payload = normalizePayload()
   if (!payload) return
+  const isHost = authStore.user?.role === 'HOST'
 
-  if (editingHomestayId.value) {
-    await http.put(`/admin/homestays/${editingHomestayId.value}`, payload)
-    ElMessage.success('房源已更新')
-  } else {
-    const result = await http.post('/admin/homestays', payload)
-    ElMessage.success('房源发布成功')
-    calendarQuery.homestayId = result.data.id
+  try {
+    if (editingHomestayId.value) {
+      await http.put(`/admin/homestays/${editingHomestayId.value}`, payload)
+      ElMessage.success(isHost ? '修改已提交审核' : '房源已更新')
+    } else {
+      const result = await http.post('/admin/homestays', payload)
+      ElMessage.success(isHost ? '已提交审核' : '房源发布成功')
+      calendarQuery.homestayId = result.data.id
+    }
+
+    editingHomestayId.value = null
+    showHomestayEditor.value = false
+    applyHomestayDraft(createHomestayDraft())
+    await loadAll()
+  } catch (error) {
+    ElMessage.error(error?.message || '操作失败')
   }
-
-  editingHomestayId.value = null
-  showHomestayEditor.value = false
-  applyHomestayDraft(createHomestayDraft())
-  await loadAll()
 }
 
 const openCreateHomestay = () => {
@@ -380,9 +409,17 @@ const cancelEdit = () => {
 }
 
 const toggleHomestayStatus = async (row) => {
-  await http.post(`/admin/homestays/${row.id}/toggle-status`)
-  ElMessage.success(row.status === 'ONLINE' ? '房源已下架' : '房源已上架')
-  await loadAll()
+  try {
+    await http.post(`/admin/homestays/${row.id}/toggle-status`)
+    if (row.status === 'DRAFT') {
+      ElMessage.success('审核已通过，房源已上架')
+    } else {
+      ElMessage.success(row.status === 'ONLINE' ? '房源已下架' : '房源已上架')
+    }
+    await loadAll()
+  } catch (error) {
+    ElMessage.error(error?.message || '操作失败')
+  }
 }
 
 const deleteHomestay = async (row) => {
@@ -435,14 +472,42 @@ const exportOrders = async () => {
   }
 }
 
-const canConfirmOrder = (order) => order?.orderStatus === 'PAID'
+const canConfirmOrder = (order) =>
+  authStore.user?.role === 'HOST' && order?.orderStatus === 'PAID'
 const canRefundOrder = (order) =>
-  ['ADMIN', 'HOST'].includes(authStore.user?.role) && order?.orderStatus === 'REFUND_REQUESTED'
+  authStore.user?.role === 'HOST' && order?.orderStatus === 'REFUND_REQUESTED'
 
 const toggleUser = async (id, type) => {
   await http.post(`/admin/users/${id}/${type}`)
   ElMessage.success('用户状态已更新')
   await loadAll()
+}
+
+const loadHostApplications = async () => {
+  if (authStore.user?.role !== 'ADMIN') return
+  const result = await http.get('/admin/host-applications')
+  hostApplications.value = result.data
+}
+
+const approveHostApplication = async (row) => {
+  try {
+    await http.post(`/admin/host-applications/${row.id}/approve`)
+    ElMessage.success('审核通过')
+    await loadHostApplications()
+    await loadAll()
+  } catch (error) {
+    ElMessage.error(error?.message || '操作失败')
+  }
+}
+
+const rejectHostApplication = async (row) => {
+  try {
+    await http.post(`/admin/host-applications/${row.id}/reject`)
+    ElMessage.success('已拒绝')
+    await loadHostApplications()
+  } catch (error) {
+    ElMessage.error(error?.message || '操作失败')
+  }
 }
 
 const replyReview = async (review) => {
@@ -514,9 +579,59 @@ const shortOrderNo = (orderNo) => {
   return orderNo.length > 8 ? orderNo.slice(-8) : orderNo
 }
 
+const formatDateTime = (value) => {
+  if (!value) return ''
+  const text = String(value)
+  if (text.includes('T')) {
+    return text.replace('T', ' ').slice(0, 19)
+  }
+  return text.length > 19 ? text.slice(0, 19) : text
+}
+
 const formatHomestayStatus = (status) => homestayStatusTextMap[status] || status
 const formatOrderStatus = (status) => orderStatusTextMap[status] || status
 const formatRole = (role) => roleTextMap[role] || role
+const formatHostApplyStatus = (status) => hostApplyStatusTextMap[status] || status
+
+const isPastDate = (date) => typeof date === 'string' && date < today
+
+const calendarCellClass = (row, date) => {
+  if (row.slotMap?.[date]?.occupied) {
+    return 'occupied'
+  }
+  if (isPastDate(date)) {
+    return 'unavailable'
+  }
+  return 'free'
+}
+
+const calendarCellTitle = (row, date) => {
+  if (row.slotMap?.[date]?.occupied) {
+    return '已订'
+  }
+  return isPastDate(date) ? '不可预订' : '空闲'
+}
+
+const calendarCellSubtitle = (row, date) => {
+  if (row.slotMap?.[date]?.occupied) {
+    return shortOrderNo(row.slotMap[date].orderNo)
+  }
+  return isPastDate(date) ? '已过期' : '可预订'
+}
+
+const homestayActionLabel = (row) => {
+  if (row.status === 'DRAFT') {
+    return authStore.user?.role === 'ADMIN' ? '审核通过' : '待审核'
+  }
+  return row.status === 'ONLINE' ? '下架' : '上架'
+}
+
+const canToggleHomestayStatus = (row) => {
+  if (row.status === 'DRAFT') {
+    return authStore.user?.role === 'ADMIN'
+  }
+  return true
+}
 
 // Settings Management
 const banners = ref([])
@@ -589,6 +704,9 @@ watch(
       await nextTick()
       renderCharts()
     }
+    if (normalized === 'host-approvals') {
+      await loadHostApplications()
+    }
     if (normalized === 'settings') {
       await loadSettings()
     }
@@ -622,13 +740,17 @@ onMounted(loadAll)
         <div class="section-title admin-section-head">
           <div>
             <h2 style="margin: 0;">后台看板</h2>
-            <p class="muted">今日订单、总销售额、新增用户数、近 7 日趋势</p>
+            <p class="muted">今日订单、今日销售额、总销售额、新增用户数、近 7 日趋势</p>
           </div>
         </div>
         <div class="admin-metrics">
           <div class="metric admin-kpi-card clickable" @click="setActiveSection('orders')">
             <span class="muted">今日订单数</span>
             <strong>{{ dashboard.todayOrders || 0 }}</strong>
+          </div>
+          <div class="metric admin-kpi-card clickable" @click="setActiveSection('orders')">
+            <span class="muted">今日销售额</span>
+            <strong>￥{{ dashboard.todaySales || 0 }}</strong>
           </div>
           <div class="metric admin-kpi-card clickable" @click="setActiveSection('orders')">
             <span class="muted">总销售额</span>
@@ -671,7 +793,9 @@ onMounted(loadAll)
             <el-table-column prop="totalRooms" label="房间数" width="90" />
             <el-table-column prop="status" label="状态" width="110">
               <template #default="{ row }">
-                <el-tag :type="row.status === 'ONLINE' ? 'success' : 'info'">{{ formatHomestayStatus(row.status) }}</el-tag>
+                <el-tag :type="row.status === 'ONLINE' ? 'success' : row.status === 'DRAFT' ? 'warning' : 'info'">
+                  {{ formatHomestayStatus(row.status) }}
+                </el-tag>
               </template>
             </el-table-column>
             <el-table-column label="操作" min-width="280">
@@ -679,8 +803,13 @@ onMounted(loadAll)
                 <div class="chip-list">
                   <el-button size="small" @click="editHomestay(row.id)">编辑</el-button>
                   <el-button size="small" @click="openCalendar(row.id)">房态</el-button>
-                  <el-button size="small" type="warning" @click="toggleHomestayStatus(row)">
-                    {{ row.status === 'ONLINE' ? '下架' : '上架' }}
+                  <el-button
+                    size="small"
+                    type="warning"
+                    :disabled="!canToggleHomestayStatus(row)"
+                    @click="toggleHomestayStatus(row)"
+                  >
+                    {{ homestayActionLabel(row) }}
                   </el-button>
                   <el-button size="small" type="danger" plain @click="deleteHomestay(row)">删除</el-button>
                 </div>
@@ -821,6 +950,7 @@ onMounted(loadAll)
         <div class="calendar-legend">
           <span class="legend-pill free">空闲</span>
           <span class="legend-pill occupied">已订</span>
+          <span class="legend-pill unavailable">不可预订</span>
           <span class="muted" v-if="calendar.homestayName">当前房源：{{ calendar.homestayName }}</span>
         </div>
 
@@ -839,9 +969,9 @@ onMounted(loadAll)
           </el-table-column>
           <el-table-column v-for="date in calendar.dates" :key="date" :label="date" min-width="108">
             <template #default="{ row }">
-              <div :class="['calendar-cell', row.slotMap[date]?.occupied ? 'occupied' : 'free']">
-                <strong>{{ row.slotMap[date]?.occupied ? '已订' : '空闲' }}</strong>
-                <small>{{ row.slotMap[date]?.occupied ? shortOrderNo(row.slotMap[date].orderNo) : '可预订' }}</small>
+              <div :class="['calendar-cell', calendarCellClass(row, date)]">
+                <strong>{{ calendarCellTitle(row, date) }}</strong>
+                <small>{{ calendarCellSubtitle(row, date) }}</small>
               </div>
             </template>
           </el-table-column>
@@ -859,6 +989,9 @@ onMounted(loadAll)
         </div>
         <el-table :data="orders" stripe>
           <el-table-column prop="orderNo" label="订单号" min-width="180" />
+          <el-table-column label="下单时间" min-width="170">
+            <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
+          </el-table-column>
           <el-table-column prop="username" label="用户" width="100" />
           <el-table-column prop="homestayName" label="房源" min-width="140" />
           <el-table-column prop="totalAmount" label="金额" width="100" />
@@ -902,6 +1035,46 @@ onMounted(loadAll)
         </el-table>
       </section>
 
+      <section v-if="activeSection === 'host-approvals' && authStore.user?.role === 'ADMIN'" class="panel table-panel admin-module">
+        <div class="section-title admin-section-head">
+          <div>
+            <h3 style="margin: 0;">房东审核</h3>
+            <p class="muted">审核房东入驻申请，审核通过后自动生成房东账号</p>
+          </div>
+        </div>
+        <el-table v-if="hostApplications.length" :data="hostApplications" stripe>
+          <el-table-column prop="username" label="账号" width="140" />
+          <el-table-column prop="nickname" label="昵称" width="140" />
+          <el-table-column prop="phone" label="手机号" width="140" />
+          <el-table-column label="状态" width="120">
+            <template #default="{ row }">
+              <el-tag :type="row.status === 'PENDING' ? 'warning' : row.status === 'APPROVED' ? 'success' : 'danger'">
+                {{ formatHostApplyStatus(row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="申请时间" min-width="170">
+            <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
+          </el-table-column>
+          <el-table-column label="审核时间" min-width="170">
+            <template #default="{ row }">{{ formatDateTime(row.reviewedAt) || '-' }}</template>
+          </el-table-column>
+          <el-table-column label="操作" min-width="180">
+            <template #default="{ row }">
+              <div class="chip-list">
+                <el-button size="small" type="primary" :disabled="row.status !== 'PENDING'" @click="approveHostApplication(row)">
+                  通过
+                </el-button>
+                <el-button size="small" type="danger" plain :disabled="row.status !== 'PENDING'" @click="rejectHostApplication(row)">
+                  拒绝
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div v-else class="empty-state">暂无房东入驻申请</div>
+      </section>
+
       <section v-if="activeSection === 'users' && authStore.user?.role === 'ADMIN'" class="panel table-panel admin-module">
         <div class="section-title admin-section-head">
           <div>
@@ -924,14 +1097,18 @@ onMounted(loadAll)
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="操作" min-width="220">
-            <template #default="{ row }">
-              <div class="chip-list">
-                <el-button size="small" @click="toggleUser(row.id, 'toggle-enabled')">切换启用</el-button>
-                <el-button size="small" type="danger" plain @click="toggleUser(row.id, 'toggle-blacklist')">切换黑名单</el-button>
-              </div>
-            </template>
-          </el-table-column>
+            <el-table-column label="操作" min-width="220">
+              <template #default="{ row }">
+                <div class="chip-list">
+                  <el-button size="small" @click="toggleUser(row.id, 'toggle-enabled')">
+                    {{ row.enabled ? '切换禁用' : '切换启用' }}
+                  </el-button>
+                  <el-button size="small" type="danger" plain @click="toggleUser(row.id, 'toggle-blacklist')">
+                    {{ row.blacklisted ? '移除黑名单' : '切换黑名单' }}
+                  </el-button>
+                </div>
+              </template>
+            </el-table-column>
         </el-table>
       </section>
 

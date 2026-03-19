@@ -11,6 +11,7 @@ import com.homestay.service.PortalService;
 import com.homestay.service.UserCenterService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -84,6 +85,11 @@ public class UserController {
     @PostMapping("/orders/{orderId}/complete")
     public ApiResponse<?> completeOrder(@PathVariable Long orderId) {
         return ApiResponse.ok("订单已完成", userCenterService.completeOrder(currentUser(), orderId));
+    }
+
+    @DeleteMapping("/orders/{orderId}")
+    public ApiResponse<?> deleteOrder(@PathVariable Long orderId) {
+        return ApiResponse.ok("订单已删除", userCenterService.deleteOrder(currentUser(), orderId));
     }
 
     @PostMapping("/reviews")

@@ -22,6 +22,10 @@ export const useAuthStore = defineStore('auth', {
       const result = await http.post('/auth/register', payload)
       this.applyAuth(result.data)
     },
+    async applyHost(payload) {
+      const result = await http.post('/auth/host-apply', payload)
+      return result.data
+    },
     applyAuth(data) {
       this.token = data.token
       this.user = data.user

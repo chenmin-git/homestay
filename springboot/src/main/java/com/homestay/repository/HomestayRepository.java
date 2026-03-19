@@ -54,4 +54,8 @@ public interface HomestayRepository extends JpaRepository<Homestay, Long> {
     List<Homestay> findTop6ByStatusOrderByCreatedAtDesc(HomestayStatus status);
 
     List<Homestay> findByHost(User host);
+
+    boolean existsByHostAndNameIgnoreCase(User host, String name);
+
+    boolean existsByHostAndNameIgnoreCaseAndIdNot(User host, String name, Long id);
 }

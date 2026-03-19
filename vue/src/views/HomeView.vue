@@ -111,6 +111,12 @@ const formatDate = (value) => {
   return text.length >= 10 ? text.slice(0, 10) : text
 }
 
+const disablePastDate = (date) => {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return date.getTime() < today.getTime()
+}
+
 const showNoticeDialog = ref(false)
 const activeNotice = ref(null)
 const noticeSectionRef = ref(null)
@@ -211,6 +217,7 @@ onMounted(async () => {
                 start-placeholder="入住日期"
                 end-placeholder="退房日期"
                 class="full-width"
+                :disabled-date="disablePastDate"
               />
             </el-form-item>
             <el-form-item label="房型">

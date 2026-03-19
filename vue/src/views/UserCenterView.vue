@@ -97,6 +97,23 @@ const refundOrder = async (id) => {
   }
 }
 
+const deleteOrder = async (id) => {
+  try {
+    await ElMessageBox.confirm('确定要删除该订单吗？删除后将不可恢复。', '提示', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await http.delete(`/user/orders/${id}`)
+    ElMessage.success('订单已删除')
+    await loadAll()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error(e.message || '操作失败')
+    }
+  }
+}
+
 const openReviewDialog = (order) => {
   reviewForm.orderId = order.id
   reviewForm.score = 5
@@ -201,6 +218,15 @@ const closeProfileDialog = () => {
                 <el-tag v-if="row.orderStatus === 'REFUND_REQUESTED'" type="warning">退款中</el-tag>
                 <el-button v-if="row.orderStatus === 'PAID' || row.orderStatus === 'CONFIRMED'" size="small" type="success" @click="completeOrder(row.id)">完成</el-button>
                 <el-button v-if="row.orderStatus === 'COMPLETED' && !row.reviewed" size="small" type="warning" @click="openReviewDialog(row)">评价</el-button>
+                <el-button
+                  v-if="['COMPLETED', 'CANCELLED', 'REFUNDED'].includes(row.orderStatus)"
+                  size="small"
+                  type="danger"
+                  plain
+                  @click="deleteOrder(row.id)"
+                >
+                  删除
+                </el-button>
                 <el-tag v-if="row.reviewed" type="info">已评价</el-tag>
               </div>
             </template>

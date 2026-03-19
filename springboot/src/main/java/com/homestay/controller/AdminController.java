@@ -97,11 +97,13 @@ public class AdminController {
     }
 
     @PostMapping("/orders/{orderId}/confirm")
+    @PreAuthorize("hasRole('HOST')")
     public ApiResponse<?> confirmOrder(@PathVariable Long orderId) {
         return ApiResponse.ok("已确认入住", adminService.confirmOrder(currentUser(), orderId));
     }
 
     @PostMapping("/orders/{orderId}/refund")
+    @PreAuthorize("hasRole('HOST')")
     public ApiResponse<?> refundOrder(@PathVariable Long orderId) {
         return ApiResponse.ok("退款处理完成", adminService.refundOrder(currentUser(), orderId));
     }
@@ -109,7 +111,7 @@ public class AdminController {
     @GetMapping("/orders/export")
     public ResponseEntity<byte[]> exportOrders() throws IOException {
         List<?> rows = adminService.orders(currentUser());
-        String[] headers = { "订单号", "用户", "民宿", "入住日期", "退房日期", "金额", "订单状态", "支付状态" };
+        String[] headers = { "订单号", "下单时间", "用户", "民宿", "入住日期", "退房日期", "金额", "订单状态", "支付状态" };
         String sheetName = "订单列表";
 
         HSSFWorkbook workbook = new HSSFWorkbook();
@@ -125,13 +127,14 @@ public class AdminController {
             var item = (java.util.Map<String, Object>) row;
             Row dataRow = sheet.createRow(rowIndex++);
             dataRow.createCell(0).setCellValue(safeText(item.get("orderNo")));
-            dataRow.createCell(1).setCellValue(safeText(item.get("username")));
-            dataRow.createCell(2).setCellValue(safeText(item.get("homestayName")));
-            dataRow.createCell(3).setCellValue(safeText(item.get("checkInDate")));
-            dataRow.createCell(4).setCellValue(safeText(item.get("checkOutDate")));
-            dataRow.createCell(5).setCellValue(safeText(item.get("totalAmount")));
-            dataRow.createCell(6).setCellValue(formatOrderStatus(item.get("orderStatus")));
-            dataRow.createCell(7).setCellValue(formatPaymentStatus(item.get("paymentStatus")));
+            dataRow.createCell(1).setCellValue(safeText(item.get("createdAt")));
+            dataRow.createCell(2).setCellValue(safeText(item.get("username")));
+            dataRow.createCell(3).setCellValue(safeText(item.get("homestayName")));
+            dataRow.createCell(4).setCellValue(safeText(item.get("checkInDate")));
+            dataRow.createCell(5).setCellValue(safeText(item.get("checkOutDate")));
+            dataRow.createCell(6).setCellValue(safeText(item.get("totalAmount")));
+            dataRow.createCell(7).setCellValue(formatOrderStatus(item.get("orderStatus")));
+            dataRow.createCell(8).setCellValue(formatPaymentStatus(item.get("paymentStatus")));
         }
 
         for (int i = 0; i < headers.length; i++) {
@@ -180,6 +183,24 @@ public class AdminController {
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<?> users() {
         return ApiResponse.ok(adminService.users());
+    }
+
+    @GetMapping("/host-applications")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<?> hostApplications() {
+        return ApiResponse.ok(adminService.hostApplications(currentUser()));
+    }
+
+    @PostMapping("/host-applications/{applicationId}/approve")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<?> approveHostApplication(@PathVariable Long applicationId) {
+        return ApiResponse.ok("审核通过", adminService.approveHostApplication(currentUser(), applicationId));
+    }
+
+    @PostMapping("/host-applications/{applicationId}/reject")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<?> rejectHostApplication(@PathVariable Long applicationId) {
+        return ApiResponse.ok("已拒绝", adminService.rejectHostApplication(currentUser(), applicationId));
     }
 
     @PostMapping("/users/{userId}/toggle-enabled")
