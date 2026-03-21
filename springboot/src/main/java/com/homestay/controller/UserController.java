@@ -3,6 +3,7 @@ package com.homestay.controller;
 import com.homestay.common.ApiResponse;
 import com.homestay.dto.OrderDtos.BookingCreateRequest;
 import com.homestay.dto.OrderDtos.ReviewCreateRequest;
+import com.homestay.dto.UserDtos.PasswordChangeRequest;
 import com.homestay.dto.UserDtos.ProfileUpdateRequest;
 import com.homestay.entity.User;
 import com.homestay.repository.UserRepository;
@@ -95,6 +96,12 @@ public class UserController {
     @PostMapping("/reviews")
     public ApiResponse<?> review(@Valid @RequestBody ReviewCreateRequest request) {
         return ApiResponse.ok("评价成功", userCenterService.createReview(currentUser(), request));
+    }
+
+    @PostMapping("/password")
+    public ApiResponse<?> changePassword(@Valid @RequestBody PasswordChangeRequest request) {
+        userCenterService.changePassword(currentUser(), request);
+        return ApiResponse.ok("密码修改成功", null);
     }
 
     private User currentUser() {

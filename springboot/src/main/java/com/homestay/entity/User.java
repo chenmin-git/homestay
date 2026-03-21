@@ -20,7 +20,7 @@ public class User extends BaseEntity {
     @Column(nullable = false, length = 50)
     private String nickname;
 
-    @Column(length = 20)
+    @Column(unique = true, length = 20)
     private String phone;
 
     @Column(length = 255)
@@ -28,6 +28,7 @@ public class User extends BaseEntity {
 
     @Column(nullable = false)
     private Boolean enabled = true;
+
 
     @Column(nullable = false)
     private Boolean blacklisted = false;

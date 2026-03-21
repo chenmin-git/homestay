@@ -12,4 +12,8 @@ public interface BookingOrderRoomRepository extends JpaRepository<BookingOrderRo
     List<BookingOrderRoom> findByOrderIn(List<BookingOrder> orders);
 
     boolean existsByRoom(Room room);
+
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true, flushAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("DELETE FROM BookingOrderRoom b WHERE b.order = ?1")
+    void deleteByOrder(BookingOrder order);
 }

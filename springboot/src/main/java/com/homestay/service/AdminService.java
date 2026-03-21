@@ -14,12 +14,14 @@ import com.homestay.entity.HostApplication;
 import com.homestay.entity.Homestay;
 import com.homestay.entity.HomestayImage;
 import com.homestay.entity.Notice;
+import com.homestay.entity.PasswordResetRequest;
 import com.homestay.entity.Review;
 import com.homestay.entity.Room;
 import com.homestay.entity.User;
 import com.homestay.enums.HostApplyStatus;
 import com.homestay.enums.HomestayStatus;
 import com.homestay.enums.OrderStatus;
+import com.homestay.enums.PasswordResetStatus;
 import com.homestay.enums.PaymentStatus;
 import com.homestay.enums.ReviewStatus;
 import com.homestay.enums.RoleType;
@@ -31,12 +33,12 @@ import com.homestay.repository.HostApplicationRepository;
 import com.homestay.repository.HomestayImageRepository;
 import com.homestay.repository.HomestayRepository;
 import com.homestay.repository.NoticeRepository;
+import com.homestay.repository.PasswordResetRequestRepository;
 import com.homestay.repository.ReviewRepository;
 import com.homestay.repository.RoomRepository;
 import com.homestay.repository.UserRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -61,6 +63,7 @@ public class AdminService {
     private final NoticeRepository noticeRepository;
     private final FavoriteRepository favoriteRepository;
     private final HostApplicationRepository hostApplicationRepository;
+    private final PasswordResetRequestRepository passwordResetRequestRepository;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     public AdminService(
@@ -75,6 +78,7 @@ public class AdminService {
         NoticeRepository noticeRepository,
         FavoriteRepository favoriteRepository,
         HostApplicationRepository hostApplicationRepository,
+        PasswordResetRequestRepository passwordResetRequestRepository,
         org.springframework.security.crypto.password.PasswordEncoder passwordEncoder
     ) {
         this.userRepository = userRepository;
@@ -88,6 +92,7 @@ public class AdminService {
         this.noticeRepository = noticeRepository;
         this.favoriteRepository = favoriteRepository;
         this.hostApplicationRepository = hostApplicationRepository;
+        this.passwordResetRequestRepository = passwordResetRequestRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -139,15 +144,26 @@ public class AdminService {
         );
         long pendingOrders = orders.stream().filter(item -> item.getOrderStatus() == OrderStatus.PAID).count();
         long newComments = reviews.stream().filter(item -> item.getStatus() == ReviewStatus.APPROVED).count();
-        return Map.of(
-            "todayOrders", todayOrders,
-            "todaySales", todaySales,
-            "totalSales", sales,
-            "newUsers", newUsers,
-            "orderTrend", orderTrend,
-            "typePie", typePie.entrySet().stream().map(item -> Map.of("name", item.getKey(), "value", item.getValue())).toList(),
-            "todos", Map.of("pendingOrders", pendingOrders, "newComments", newComments)
-        );
+        try {
+            return Map.of(
+                "todayOrders", todayOrders,
+                "todaySales", todaySales,
+                "totalSales", sales,
+                "newUsers", newUsers,
+                "orderTrend", orderTrend,
+                "typePie", typePie.entrySet().stream()
+                    .map(item -> {
+                        Map<String, Object> entry = new LinkedHashMap<>();
+                        entry.put("name", item.getKey() == null ? "其他" : item.getKey());
+                        entry.put("value", item.getValue());
+                        return entry;
+                    }).toList(),
+                "todos", Map.of("pendingOrders", pendingOrders, "newComments", newComments)
+            );
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new BusinessException("仪表盘数据加载失败: " + e.getMessage());
+        }
     }
 
     @Transactional(readOnly = true)
@@ -182,18 +198,24 @@ public class AdminService {
         }).toList();
     }
 
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> users() {
-        return userRepository.findAll().stream().map(item -> {
-            Map<String, Object> data = new LinkedHashMap<>();
-            data.put("id", item.getId());
-            data.put("username", item.getUsername());
-            data.put("nickname", item.getNickname());
-            data.put("phone", item.getPhone() == null ? "" : item.getPhone());
-            data.put("role", item.getRole().name());
-            data.put("enabled", item.getEnabled());
-            data.put("blacklisted", item.getBlacklisted());
-            return data;
-        }).toList();
+        try {
+            return userRepository.findAll().stream().map(item -> {
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("id", item.getId());
+                data.put("username", item.getUsername());
+                data.put("nickname", item.getNickname());
+                data.put("phone", item.getPhone() == null ? "" : item.getPhone());
+                data.put("role", item.getRole() == null ? "USER" : item.getRole().name());
+                data.put("enabled", item.getEnabled() != null && item.getEnabled());
+                data.put("blacklisted", item.getBlacklisted() != null && item.getBlacklisted());
+                return data;
+            }).toList();
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new BusinessException("用户列表加载失败: " + e.getMessage());
+        }
     }
 
     @Transactional(readOnly = true)
@@ -205,6 +227,23 @@ public class AdminService {
             data.put("username", item.getUsername());
             data.put("nickname", item.getNickname());
             data.put("phone", item.getPhone());
+            data.put("status", item.getStatus().name());
+            data.put("createdAt", item.getCreatedAt());
+            data.put("reviewedAt", item.getReviewedAt());
+            return data;
+        }).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> passwordResetRequests(User operator) {
+        ensureAdmin(operator);
+        return passwordResetRequestRepository.findAllByOrderByCreatedAtDesc().stream().map(item -> {
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("id", item.getId());
+            data.put("username", item.getUsername());
+            data.put("nickname", item.getNickname());
+            data.put("phone", item.getPhone());
+            data.put("role", item.getRole().name());
             data.put("status", item.getStatus().name());
             data.put("createdAt", item.getCreatedAt());
             data.put("reviewedAt", item.getReviewedAt());
@@ -251,6 +290,43 @@ public class AdminService {
         application.setReviewedAt(LocalDateTime.now());
         hostApplicationRepository.save(application);
         return Map.of("id", application.getId(), "status", application.getStatus().name());
+    }
+
+    @Transactional
+    public Map<String, Object> approvePasswordResetRequest(User operator, Long requestId) {
+        ensureAdmin(operator);
+        PasswordResetRequest request = passwordResetRequestRepository.findById(requestId)
+            .orElseThrow(() -> new BusinessException("改密申请不存在"));
+        if (request.getStatus() != PasswordResetStatus.PENDING) {
+            throw new BusinessException("该改密申请已处理");
+        }
+
+        User user = userRepository.findByUsername(request.getUsername())
+            .orElseThrow(() -> new BusinessException("账号不存在，无法完成改密"));
+        if (user.getRole() != request.getRole()) {
+            throw new BusinessException("账号角色不匹配，无法完成改密");
+        }
+
+        user.setPassword(request.getNewPassword());
+        userRepository.save(user);
+        request.setStatus(PasswordResetStatus.APPROVED);
+        request.setReviewedAt(LocalDateTime.now());
+        passwordResetRequestRepository.save(request);
+        return Map.of("id", request.getId(), "status", request.getStatus().name());
+    }
+
+    @Transactional
+    public Map<String, Object> rejectPasswordResetRequest(User operator, Long requestId) {
+        ensureAdmin(operator);
+        PasswordResetRequest request = passwordResetRequestRepository.findById(requestId)
+            .orElseThrow(() -> new BusinessException("改密申请不存在"));
+        if (request.getStatus() != PasswordResetStatus.PENDING) {
+            throw new BusinessException("该改密申请已处理");
+        }
+        request.setStatus(PasswordResetStatus.REJECTED);
+        request.setReviewedAt(LocalDateTime.now());
+        passwordResetRequestRepository.save(request);
+        return Map.of("id", request.getId(), "status", request.getStatus().name());
     }
 
     @Transactional(readOnly = true)
@@ -455,6 +531,18 @@ public class AdminService {
     }
 
     @Transactional
+    public void deleteOrder(User operator, Long orderId) {
+        BookingOrder order = loadOwnedOrder(operator, orderId);
+        OrderStatus status = order.getOrderStatus();
+        if (status != OrderStatus.COMPLETED && status != OrderStatus.REFUNDED && status != OrderStatus.CANCELLED) {
+            throw new BusinessException("仅能删除已完成、已退款或已取消的订单");
+        }
+        reviewRepository.deleteByOrder(order);
+        bookingOrderRoomRepository.deleteByOrder(order);
+        bookingOrderRepository.delete(order);
+    }
+
+    @Transactional
     public Map<String, Object> toggleUserStatus(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(() -> new BusinessException("用户不存在"));
         user.setEnabled(!user.getEnabled());
@@ -468,6 +556,27 @@ public class AdminService {
         user.setBlacklisted(!user.getBlacklisted());
         userRepository.save(user);
         return Map.of("id", user.getId(), "blacklisted", user.getBlacklisted());
+    }
+
+    @Transactional
+    public void deleteUser(User operator, Long userId) {
+        ensureAdmin(operator);
+        User user = userRepository.findById(userId).orElseThrow(() -> new BusinessException("用户不存在"));
+        if (user.getId().equals(operator.getId())) {
+            throw new BusinessException("不能删除当前登录的管理员账号");
+        }
+        if (user.getRole() == RoleType.HOST && !homestayRepository.findByHost(user).isEmpty()) {
+            throw new BusinessException("该房东名下已有房源，请先删除房源再删除此账号");
+        }
+        if (!bookingOrderRepository.findByUserOrderByCreatedAtDesc(user).isEmpty()) {
+            throw new BusinessException("该用户已有订单记录，不能直接删除，建议通过‘禁用’功能限制其访问");
+        }
+        if (!reviewRepository.findByUserOrderByCreatedAtDesc(user).isEmpty()) {
+            throw new BusinessException("该用户已发表过评论，不能直接删除");
+        }
+        favoriteRepository.deleteByUser(user);
+        hostApplicationRepository.deleteByUsername(user.getUsername());
+        userRepository.delete(user);
     }
 
     @Transactional
@@ -602,14 +711,14 @@ public class AdminService {
         );
         ensureReview(paidOrder, admin, villa, 5, "位置好找，支持自己选房号这一点很实用。", "", ReviewStatus.APPROVED);
 
-        BookingOrder pendingOrder = ensureOrder(
+        ensureOrder(
             "HSDEMO202603180002", user, villa,
             List.of(findRoomByNo(villa, "A102")),
             LocalDate.now().plusDays(1), LocalDate.now().plusDays(2),
             OrderStatus.PENDING_PAYMENT, PaymentStatus.UNPAID, "演示游客", "13800138000", "待支付演示"
         );
 
-        BookingOrder confirmedOrder = ensureOrder(
+        ensureOrder(
             "HSDEMO202603180003", user2, courtyard,
             List.of(findRoomByNo(courtyard, "C301")),
             LocalDate.now().plusDays(3), LocalDate.now().plusDays(6),
@@ -624,14 +733,14 @@ public class AdminService {
         );
         ensureReview(completedOrder, user3, cityStay, 4, "夜景很好，房间号选择清晰，适合答辩展示。", "感谢入住，欢迎下次再来。", ReviewStatus.APPROVED);
 
-        BookingOrder refundedOrder = ensureOrder(
+        ensureOrder(
             "HSDEMO202603180005", user2, lakeVilla,
             List.of(findRoomByNo(lakeVilla, "H201")),
             LocalDate.now().minusDays(5), LocalDate.now().minusDays(3),
             OrderStatus.REFUNDED, PaymentStatus.REFUNDED, "差旅白领", "13900000004", "退款演示"
         );
 
-        BookingOrder cancelledOrder = ensureOrder(
+        ensureOrder(
             "HSDEMO202603180006", user, cityStay,
             List.of(findRoomByNo(cityStay, "S1101")),
             LocalDate.now().plusDays(6), LocalDate.now().plusDays(8),
@@ -863,6 +972,7 @@ public class AdminService {
         data.put("basePrice", homestay.getBasePrice());
         data.put("totalRooms", homestay.getTotalRooms());
         data.put("status", homestay.getStatus().name());
+        data.put("hostId", homestay.getHost().getId());
         data.put("hostName", homestay.getHost().getNickname());
         data.put("bookingCount", homestay.getBookingCount());
         data.put("coverImage", homestay.getCoverImage());

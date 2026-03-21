@@ -15,4 +15,6 @@ public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
     List<Favorite> findByHomestay(Homestay homestay);
 
     long countByHomestay(Homestay homestay);
+
+    void deleteByUser(User user);
 }

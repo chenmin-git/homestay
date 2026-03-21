@@ -143,3 +143,16 @@ CREATE TABLE IF NOT EXISTS favorite (
     CONSTRAINT fk_favorite_user FOREIGN KEY (user_id) REFERENCES sys_user(id),
     CONSTRAINT fk_favorite_homestay FOREIGN KEY (homestay_id) REFERENCES homestay(id)
 );
+
+CREATE TABLE IF NOT EXISTS password_reset_request (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    username VARCHAR(50) NOT NULL,
+    nickname VARCHAR(50) NOT NULL,
+    phone VARCHAR(20) NOT NULL,
+    role VARCHAR(20) NOT NULL,
+    new_password VARCHAR(255) NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    reviewed_at DATETIME
+);

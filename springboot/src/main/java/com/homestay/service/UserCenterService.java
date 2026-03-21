@@ -3,6 +3,7 @@ package com.homestay.service;
 import com.homestay.common.BusinessException;
 import com.homestay.dto.OrderDtos.BookingCreateRequest;
 import com.homestay.dto.OrderDtos.ReviewCreateRequest;
+import com.homestay.dto.UserDtos.PasswordChangeRequest;
 import com.homestay.dto.UserDtos.ProfileUpdateRequest;
 import com.homestay.entity.BookingOrder;
 import com.homestay.entity.BookingOrderRoom;
@@ -22,7 +23,6 @@ import com.homestay.repository.ReviewRepository;
 import com.homestay.repository.RoomRepository;
 import com.homestay.repository.UserRepository;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
@@ -30,6 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,6 +45,7 @@ public class UserCenterService {
     private final FavoriteRepository favoriteRepository;
     private final ReviewRepository reviewRepository;
     private final PortalService portalService;
+    private final PasswordEncoder passwordEncoder;
 
     public UserCenterService(
         UserRepository userRepository,
@@ -53,7 +55,8 @@ public class UserCenterService {
         BookingOrderRoomRepository bookingOrderRoomRepository,
         FavoriteRepository favoriteRepository,
         ReviewRepository reviewRepository,
-        PortalService portalService
+        PortalService portalService,
+        PasswordEncoder passwordEncoder
     ) {
         this.userRepository = userRepository;
         this.homestayRepository = homestayRepository;
@@ -63,6 +66,7 @@ public class UserCenterService {
         this.favoriteRepository = favoriteRepository;
         this.reviewRepository = reviewRepository;
         this.portalService = portalService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public Map<String, Object> profile(User user) {
@@ -72,7 +76,8 @@ public class UserCenterService {
             "nickname", user.getNickname(),
             "phone", user.getPhone() == null ? "" : user.getPhone(),
             "avatar", user.getAvatar() == null ? "" : user.getAvatar(),
-            "role", user.getRole().name()
+            "role", user.getRole().name(),
+            "blacklisted", Boolean.TRUE.equals(user.getBlacklisted())
         );
     }
 
@@ -108,6 +113,7 @@ public class UserCenterService {
 
     @Transactional
     public Map<String, Object> createOrder(User user, BookingCreateRequest request) {
+        ensureCanBook(user);
         Homestay homestay = homestayRepository.findById(request.homestayId())
             .orElseThrow(() -> new BusinessException("房源不存在"));
         if (!request.checkOutDate().isAfter(request.checkInDate())) {
@@ -164,6 +170,7 @@ public class UserCenterService {
 
     @Transactional
     public Map<String, Object> payOrder(User user, Long orderId) {
+        ensureCanBook(user);
         BookingOrder order = ownOrder(user, orderId);
         if (order.getOrderStatus() != OrderStatus.PENDING_PAYMENT) {
             throw new BusinessException("当前订单状态不允许支付");
@@ -258,6 +265,15 @@ public class UserCenterService {
         return Map.of("id", review.getId(), "score", review.getScore());
     }
 
+    @Transactional
+    public void changePassword(User user, PasswordChangeRequest request) {
+        if (!passwordEncoder.matches(request.oldPassword(), user.getPassword())) {
+            throw new BusinessException("原密码错误");
+        }
+        user.setPassword(passwordEncoder.encode(request.newPassword()));
+        userRepository.save(user);
+    }
+
     private BookingOrder ownOrder(User user, Long orderId) {
         BookingOrder order = bookingOrderRepository.findById(orderId)
             .orElseThrow(() -> new BusinessException("订单不存在"));
@@ -265,6 +281,12 @@ public class UserCenterService {
             throw new BusinessException("无权操作该订单");
         }
         return order;
+    }
+
+    private void ensureCanBook(User user) {
+        if (Boolean.TRUE.equals(user.getBlacklisted())) {
+            throw new BusinessException("账号已被拉入黑名单，无法继续订房");
+        }
     }
 
     private Map<String, Object> orderSummary(BookingOrder order) {

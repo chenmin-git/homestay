@@ -26,6 +26,14 @@ export const useAuthStore = defineStore('auth', {
       const result = await http.post('/auth/host-apply', payload)
       return result.data
     },
+    async resetUserPassword(payload) {
+      const result = await http.post('/auth/user/reset-password', payload)
+      this.applyAuth(result.data)
+    },
+    async submitHostPasswordReset(payload) {
+      const result = await http.post('/auth/host/reset-password', payload)
+      return result.data
+    },
     applyAuth(data) {
       this.token = data.token
       this.user = data.user

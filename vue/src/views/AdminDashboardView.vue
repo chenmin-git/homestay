@@ -35,6 +35,12 @@ const hostApplyStatusTextMap = {
   REJECTED: '已拒绝'
 }
 
+const passwordResetStatusTextMap = {
+  PENDING: '待审核',
+  APPROVED: '已通过',
+  REJECTED: '已拒绝'
+}
+
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
@@ -44,6 +50,7 @@ const users = ref([])
 const reviews = ref([])
 const homestays = ref([])
 const hostApplications = ref([])
+const passwordResetRequests = ref([])
 const chartRef = ref()
 const pieRef = ref()
 const editingHomestayId = ref(null)
@@ -51,6 +58,18 @@ const showHomestayEditor = ref(false)
 const calendar = ref({ homestayName: '', dates: [], rooms: [] })
 const today = new Date().toISOString().slice(0, 10)
 const activeSection = ref('dashboard')
+const hostFilter = ref(null)
+
+const hostOptions = computed(() => {
+  return users.value
+    .filter((u) => u.role === 'HOST' || u.role === 'ADMIN')
+    .map((u) => ({ id: u.id, nickname: u.nickname }))
+})
+
+const filteredHomestays = computed(() => {
+  if (!hostFilter.value) return homestays.value
+  return homestays.value.filter((h) => h.hostId === hostFilter.value)
+})
 
 const adminSections = computed(() => {
   const sections = [
@@ -60,8 +79,12 @@ const adminSections = computed(() => {
     { key: 'orders', label: '订单管理', desc: '确认入住与退款' },
     { key: 'reviews', label: '评论管理', desc: '回复与隐藏评论' }
   ]
+  if (authStore.user?.role === 'HOST') {
+    sections.push({ key: 'security', label: '账号安全', desc: '修改登录密码' })
+  }
   if (authStore.user?.role === 'ADMIN') {
     sections.push({ key: 'host-approvals', label: '房东审核', desc: '审核房东入驻申请' })
+    sections.push({ key: 'password-resets', label: '改密审核', desc: '审核房东忘记密码申请' })
     sections.push({ key: 'settings', label: '系统设置', desc: '轮播图、公告与密码' })
     sections.push({ key: 'users', label: '用户管理', desc: '启用、禁用与黑名单' })
   }
@@ -112,6 +135,23 @@ const calendarQuery = reactive({
   startDate: today,
   days: 7
 })
+
+const homestayFormRef = ref(null)
+
+const homestayRules = {
+  name: [{ required: true, message: '请输入房源名称', trigger: 'blur' }],
+  city: [{ required: true, message: '请输入所在城市', trigger: 'blur' }],
+  address: [{ required: true, message: '请输入详细地址', trigger: 'blur' }],
+  basePrice: [{ required: true, message: '请输入基础价格', trigger: 'blur' }],
+  houseType: [{ required: true, message: '请输入房型', trigger: 'blur' }],
+  tags: [{ required: true, message: '请输入标签', trigger: 'blur' }],
+  facilities: [{ required: true, message: '请输入设施', trigger: 'blur' }],
+  latitude: [{ required: true, message: '请获取纬度', trigger: 'change' }],
+  longitude: [{ required: true, message: '请获取经度', trigger: 'change' }],
+  coverImage: [{ required: true, message: '请上传封面图', trigger: 'change' }],
+  summary: [{ required: true, message: '请输入摘要', trigger: 'blur' }],
+  description: [{ required: true, message: '请输入详情', trigger: 'blur' }]
+}
 
 const applyHomestayDraft = (draft) => {
   const source = draft || createHomestayDraft()
@@ -334,37 +374,57 @@ const loadCalendar = async (forceHomestayId) => {
 const loadAll = async () => {
   if (!authStore.isLoggedIn) return
 
-  const requests = [
-    http.get('/admin/dashboard'),
-    http.get('/admin/homestays'),
-    http.get('/admin/orders'),
-    http.get('/admin/reviews')
-  ]
-  if (authStore.user?.role === 'ADMIN') {
-    requests.push(http.get('/admin/users'))
-  }
+  try {
+    const isAdmin = authStore.user?.role === 'ADMIN'
+    const requests = [
+      http.get('/admin/dashboard'),
+      http.get('/admin/homestays'),
+      http.get('/admin/orders'),
+      http.get('/admin/reviews')
+    ]
+    if (isAdmin) {
+      requests.push(http.get('/admin/users'))
+      requests.push(http.get('/admin/host-applications'))
+      requests.push(http.get('/admin/password-reset-requests'))
+    }
 
-  const [dashboardRes, homestayRes, orderRes, reviewRes, userRes] = await Promise.all(requests)
-  dashboard.value = dashboardRes.data
-  homestays.value = homestayRes.data
-  orders.value = orderRes.data
-  reviews.value = reviewRes.data
-  users.value = userRes?.data || []
+    const results = await Promise.all(requests)
+    dashboard.value = results[0].data
+    homestays.value = results[1].data
+    orders.value = results[2].data
+    reviews.value = results[3].data
+    
+    if (isAdmin) {
+      users.value = results[4]?.data || []
+      hostApplications.value = results[5]?.data || []
+      passwordResetRequests.value = results[6]?.data || []
+    }
 
-  if (!calendarQuery.homestayId && homestays.value.length) {
-    calendarQuery.homestayId = homestays.value[0].id
-  }
+    if (!calendarQuery.homestayId && homestays.value.length) {
+      calendarQuery.homestayId = homestays.value[0].id
+    }
 
-  if (activeSection.value === 'dashboard') {
-    await nextTick()
-    renderCharts()
-  }
-  if (calendarQuery.homestayId) {
-    await loadCalendar(calendarQuery.homestayId)
+    if (activeSection.value === 'dashboard') {
+      await nextTick()
+      renderCharts()
+    }
+    if (calendarQuery.homestayId) {
+      await loadCalendar(calendarQuery.homestayId)
+    }
+  } catch (error) {
+    ElMessage.error('加载汇总数据失败: ' + error.message)
   }
 }
 
 const submitHomestay = async () => {
+  if (!homestayFormRef.value) return
+  try {
+    await homestayFormRef.value.validate()
+  } catch (err) {
+    ElMessage.error('请检查必填项是否填写完整')
+    return
+  }
+
   const payload = normalizePayload()
   if (!payload) return
   const isHost = authStore.user?.role === 'HOST'
@@ -406,6 +466,26 @@ const cancelEdit = () => {
   editingHomestayId.value = null
   showHomestayEditor.value = false
   applyHomestayDraft(createHomestayDraft())
+}
+
+const confirmDeleteUser = (row) => {
+  ElMessageBox.confirm(
+    `确定要删除用户 ${row.nickname} (账号:${row.username}) 吗？此操作不可逆，且只有在用户无房源、无订单、无评论时才能成功。`,
+    '危险操作',
+    {
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  ).then(async () => {
+    try {
+      await http.delete(`/admin/users/${row.id}`)
+      ElMessage.success('用户已彻底删除')
+      loadAll()
+    } catch (e) {
+      // Error is handled by global interceptor
+    }
+  })
 }
 
 const toggleHomestayStatus = async (row) => {
@@ -455,6 +535,21 @@ const refundOrder = async (id) => {
   await loadAll()
 }
 
+const confirmDeleteOrder = async (id) => {
+  try {
+    await ElMessageBox.confirm('确认删除该订单吗？删除后不可恢复。', '警告', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await http.delete(`/admin/orders/${id}`)
+    ElMessage.success('订单已删除')
+    await loadAll()
+  } catch {
+    // User canceled
+  }
+}
+
 const exportOrders = async () => {
   try {
     const blob = await http.get('/admin/orders/export', { responseType: 'blob' })
@@ -476,6 +571,8 @@ const canConfirmOrder = (order) =>
   authStore.user?.role === 'HOST' && order?.orderStatus === 'PAID'
 const canRefundOrder = (order) =>
   authStore.user?.role === 'HOST' && order?.orderStatus === 'REFUND_REQUESTED'
+const canDeleteOrder = (order) =>
+  ['COMPLETED', 'REFUNDED', 'CANCELLED'].includes(order?.orderStatus)
 
 const toggleUser = async (id, type) => {
   await http.post(`/admin/users/${id}/${type}`)
@@ -487,6 +584,12 @@ const loadHostApplications = async () => {
   if (authStore.user?.role !== 'ADMIN') return
   const result = await http.get('/admin/host-applications')
   hostApplications.value = result.data
+}
+
+const loadPasswordResetRequests = async () => {
+  if (authStore.user?.role !== 'ADMIN') return
+  const result = await http.get('/admin/password-reset-requests')
+  passwordResetRequests.value = result.data
 }
 
 const approveHostApplication = async (row) => {
@@ -505,6 +608,26 @@ const rejectHostApplication = async (row) => {
     await http.post(`/admin/host-applications/${row.id}/reject`)
     ElMessage.success('已拒绝')
     await loadHostApplications()
+  } catch (error) {
+    ElMessage.error(error?.message || '操作失败')
+  }
+}
+
+const approvePasswordResetRequest = async (row) => {
+  try {
+    await http.post(`/admin/password-reset-requests/${row.id}/approve`)
+    ElMessage.success('改密申请已通过')
+    await loadPasswordResetRequests()
+  } catch (error) {
+    ElMessage.error(error?.message || '操作失败')
+  }
+}
+
+const rejectPasswordResetRequest = async (row) => {
+  try {
+    await http.post(`/admin/password-reset-requests/${row.id}/reject`)
+    ElMessage.success('改密申请已拒绝')
+    await loadPasswordResetRequests()
   } catch (error) {
     ElMessage.error(error?.message || '操作失败')
   }
@@ -592,6 +715,7 @@ const formatHomestayStatus = (status) => homestayStatusTextMap[status] || status
 const formatOrderStatus = (status) => orderStatusTextMap[status] || status
 const formatRole = (role) => roleTextMap[role] || role
 const formatHostApplyStatus = (status) => hostApplyStatusTextMap[status] || status
+const formatPasswordResetStatus = (status) => passwordResetStatusTextMap[status] || status
 
 const isPastDate = (date) => typeof date === 'string' && date < today
 
@@ -707,6 +831,9 @@ watch(
     if (normalized === 'host-approvals') {
       await loadHostApplications()
     }
+    if (normalized === 'password-resets') {
+      await loadPasswordResetRequests()
+    }
     if (normalized === 'settings') {
       await loadSettings()
     }
@@ -785,11 +912,21 @@ onMounted(loadAll)
               <p class="muted">先查看列表，再通过新增按钮录入房源信息</p>
             </div>
             <div class="chip-list">
+              <el-select
+                v-if="authStore.user?.role === 'ADMIN'"
+                v-model="hostFilter"
+                placeholder="按房东筛选"
+                clearable
+                style="width: 160px; margin-right: 12px"
+              >
+                <el-option v-for="host in hostOptions" :key="host.id" :label="host.nickname" :value="host.id" />
+              </el-select>
               <el-button type="primary" color="#b5653b" @click="openCreateHomestay">新增房源</el-button>
             </div>
           </div>
-          <el-table :data="homestays" max-height="440" stripe>
+          <el-table :data="filteredHomestays" max-height="440" stripe>
             <el-table-column prop="name" label="房源" min-width="160" />
+            <el-table-column v-if="authStore.user?.role === 'ADMIN'" prop="hostName" label="房东" width="120" />
             <el-table-column prop="totalRooms" label="房间数" width="90" />
             <el-table-column prop="status" label="状态" width="110">
               <template #default="{ row }">
@@ -830,15 +967,15 @@ onMounted(loadAll)
               房东可维护房源的基本信息、多张展示图片以及具体房间库存。
             </p>
 
-            <el-form label-position="top">
+            <el-form ref="homestayFormRef" :model="homestayForm" :rules="homestayRules" label-position="top">
               <div class="two-cols">
-                <el-form-item label="名称"><el-input v-model="homestayForm.name" /></el-form-item>
-                <el-form-item label="城市"><el-input v-model="homestayForm.city" /></el-form-item>
-                <el-form-item label="区县"><el-input v-model="homestayForm.district" /></el-form-item>
-                <el-form-item label="地址"><el-input v-model="homestayForm.address" /></el-form-item>
-                <el-form-item label="基础价格"><el-input-number v-model="homestayForm.basePrice" class="full-width" /></el-form-item>
-                <el-form-item label="房型"><el-input v-model="homestayForm.houseType" /></el-form-item>
-                <el-form-item label="位置坐标" class="full-row">
+                <el-form-item label="名称" prop="name"><el-input v-model="homestayForm.name" /></el-form-item>
+                <el-form-item label="城市" prop="city"><el-input v-model="homestayForm.city" /></el-form-item>
+                <el-form-item label="区县" prop="district"><el-input v-model="homestayForm.district" /></el-form-item>
+                <el-form-item label="地址" prop="address"><el-input v-model="homestayForm.address" /></el-form-item>
+                <el-form-item label="基础价格" prop="basePrice"><el-input-number v-model="homestayForm.basePrice" class="full-width" /></el-form-item>
+                <el-form-item label="房型" prop="houseType"><el-input v-model="homestayForm.houseType" /></el-form-item>
+                <el-form-item label="位置坐标" prop="latitude" class="full-row">
                   <div class="latlng-picker-group">
                     <div class="latlng-inputs">
                       <el-input-number v-model="homestayForm.latitude" :precision="6" :step="0.0001" placeholder="纬度" />
@@ -851,9 +988,9 @@ onMounted(loadAll)
                   </div>
                 </el-form-item>
               </div>
-              <el-form-item label="标签"><el-input v-model="homestayForm.tags" placeholder="用逗号分隔" /></el-form-item>
-              <el-form-item label="设施"><el-input v-model="homestayForm.facilities" placeholder="用逗号分隔" /></el-form-item>
-              <el-form-item label="封面图">
+              <el-form-item label="标签" prop="tags"><el-input v-model="homestayForm.tags" placeholder="用逗号分隔" /></el-form-item>
+              <el-form-item label="设施" prop="facilities"><el-input v-model="homestayForm.facilities" placeholder="用逗号分隔" /></el-form-item>
+              <el-form-item label="封面图" prop="coverImage">
                 <el-upload
                   class="avatar-uploader"
                   action="/api/public/upload"
@@ -868,8 +1005,8 @@ onMounted(loadAll)
                   <el-tag size="small" closable @close="homestayForm.coverImage = ''">已上传</el-tag>
                 </div>
               </el-form-item>
-              <el-form-item label="摘要"><el-input v-model="homestayForm.summary" /></el-form-item>
-              <el-form-item label="详情"><el-input v-model="homestayForm.description" type="textarea" :rows="3" /></el-form-item>
+              <el-form-item label="摘要" prop="summary"><el-input v-model="homestayForm.summary" /></el-form-item>
+              <el-form-item label="详情" prop="description"><el-input v-model="homestayForm.description" type="textarea" :rows="3" /></el-form-item>
 
               <div class="section-title" style="margin-top: 8px;">
                 <h4 style="margin: 0;">房源图片</h4>
@@ -1003,6 +1140,7 @@ onMounted(loadAll)
               <div class="chip-list">
                 <el-button v-if="canConfirmOrder(row)" size="small" type="primary" @click="confirmOrder(row.id)">确认</el-button>
                 <el-button v-if="canRefundOrder(row)" size="small" @click="refundOrder(row.id)">同意退款</el-button>
+                <el-button v-if="canDeleteOrder(row)" size="small" type="danger" plain @click="confirmDeleteOrder(row.id)">删除</el-button>
               </div>
             </template>
           </el-table-column>
@@ -1033,6 +1171,31 @@ onMounted(loadAll)
             </template>
           </el-table-column>
         </el-table>
+      </section>
+
+      <section v-if="activeSection === 'security' && authStore.user?.role === 'HOST'" class="content-grid">
+        <div class="panel admin-module settings-panel">
+          <div class="admin-section-head">
+            <h2 style="margin: 0;">账号安全</h2>
+            <p class="muted">房东可在此修改当前登录密码</p>
+          </div>
+          <div class="password-form-container" style="max-width: 420px; margin: 24px auto 0;">
+            <el-form label-position="top">
+              <el-form-item label="原密码">
+                <el-input v-model="passwordForm.oldPassword" type="password" show-password />
+              </el-form-item>
+              <el-form-item label="新密码">
+                <el-input v-model="passwordForm.newPassword" type="password" show-password />
+              </el-form-item>
+              <el-form-item label="确认新密码">
+                <el-input v-model="passwordForm.confirmPassword" type="password" show-password />
+              </el-form-item>
+              <div style="margin-top: 30px; text-align: center;">
+                <el-button type="primary" color="#b5653b" style="width: 100%;" @click="changePassword">确认修改密码</el-button>
+              </div>
+            </el-form>
+          </div>
+        </div>
       </section>
 
       <section v-if="activeSection === 'host-approvals' && authStore.user?.role === 'ADMIN'" class="panel table-panel admin-module">
@@ -1075,6 +1238,49 @@ onMounted(loadAll)
         <div v-else class="empty-state">暂无房东入驻申请</div>
       </section>
 
+      <section v-if="activeSection === 'password-resets' && authStore.user?.role === 'ADMIN'" class="panel table-panel admin-module">
+        <div class="section-title admin-section-head">
+          <div>
+            <h3 style="margin: 0;">房东改密审核</h3>
+            <p class="muted">处理房东在登录页提交的忘记密码申请</p>
+          </div>
+        </div>
+        <el-table v-if="passwordResetRequests.length" :data="passwordResetRequests" stripe>
+          <el-table-column prop="username" label="账号" width="140" />
+          <el-table-column prop="nickname" label="昵称" width="140" />
+          <el-table-column prop="phone" label="手机号" width="140" />
+          <el-table-column label="角色" width="100">
+            <template #default="{ row }">{{ formatRole(row.role) }}</template>
+          </el-table-column>
+          <el-table-column label="状态" width="120">
+            <template #default="{ row }">
+              <el-tag :type="row.status === 'PENDING' ? 'warning' : row.status === 'APPROVED' ? 'success' : 'danger'">
+                {{ formatPasswordResetStatus(row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="申请时间" min-width="170">
+            <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
+          </el-table-column>
+          <el-table-column label="审核时间" min-width="170">
+            <template #default="{ row }">{{ formatDateTime(row.reviewedAt) || '-' }}</template>
+          </el-table-column>
+          <el-table-column label="操作" min-width="180">
+            <template #default="{ row }">
+              <div class="chip-list">
+                <el-button size="small" type="primary" :disabled="row.status !== 'PENDING'" @click="approvePasswordResetRequest(row)">
+                  通过
+                </el-button>
+                <el-button size="small" type="danger" plain :disabled="row.status !== 'PENDING'" @click="rejectPasswordResetRequest(row)">
+                  拒绝
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div v-else class="empty-state">暂无房东改密申请</div>
+      </section>
+
       <section v-if="activeSection === 'users' && authStore.user?.role === 'ADMIN'" class="panel table-panel admin-module">
         <div class="section-title admin-section-head">
           <div>
@@ -1097,14 +1303,17 @@ onMounted(loadAll)
               </div>
             </template>
           </el-table-column>
-            <el-table-column label="操作" min-width="220">
+            <el-table-column label="操作" min-width="300">
               <template #default="{ row }">
                 <div class="chip-list">
                   <el-button size="small" @click="toggleUser(row.id, 'toggle-enabled')">
                     {{ row.enabled ? '切换禁用' : '切换启用' }}
                   </el-button>
-                  <el-button size="small" type="danger" plain @click="toggleUser(row.id, 'toggle-blacklist')">
-                    {{ row.blacklisted ? '移除黑名单' : '切换黑名单' }}
+                  <el-button size="small" :type="row.blacklisted ? 'warning' : 'default'" plain @click="toggleUser(row.id, 'toggle-blacklist')">
+                    {{ row.blacklisted ? '移除黑名单' : '加入黑名单' }}
+                  </el-button>
+                  <el-button size="small" type="danger" plain :disabled="row.id === authStore.user?.id" @click="confirmDeleteUser(row)">
+                    删除
                   </el-button>
                 </div>
               </template>

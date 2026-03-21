@@ -1,9 +1,11 @@
 package com.homestay.controller;
 
 import com.homestay.common.ApiResponse;
+import com.homestay.dto.AuthDtos.HostPasswordResetRequest;
 import com.homestay.dto.AuthDtos.HostApplyRequest;
 import com.homestay.dto.AuthDtos.LoginRequest;
 import com.homestay.dto.AuthDtos.RegisterRequest;
+import com.homestay.dto.AuthDtos.UserPasswordResetRequest;
 import com.homestay.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,5 +36,15 @@ public class AuthController {
     @PostMapping("/login")
     public ApiResponse<?> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.ok("登录成功", authService.login(request));
+    }
+
+    @PostMapping("/user/reset-password")
+    public ApiResponse<?> resetUserPassword(@Valid @RequestBody UserPasswordResetRequest request) {
+        return ApiResponse.ok("密码重置成功", authService.resetUserPassword(request));
+    }
+
+    @PostMapping("/host/reset-password")
+    public ApiResponse<?> submitHostPasswordReset(@Valid @RequestBody HostPasswordResetRequest request) {
+        return ApiResponse.ok("改密申请已提交，请等待管理员审核", authService.submitHostPasswordReset(request));
     }
 }

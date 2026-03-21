@@ -20,13 +20,15 @@ const orderStatusTextMap = {
 }
 
 const authStore = useAuthStore()
-const profile = reactive({ nickname: '', avatar: '', phone: '' })
+const profile = reactive({ nickname: '', avatar: '', phone: '', blacklisted: false })
 const orders = ref([])
 const favorites = ref([])
 const showReviewDialog = ref(false)
 const reviewForm = reactive({ orderId: null, score: 5, content: '', imageUrls: [] })
 const fileList = ref([])
 const showProfileDialog = ref(false)
+const showPasswordDialog = ref(false)
+const passwordForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
 
 const formatOrderStatus = (status) => orderStatusTextMap[status] || status
 
@@ -41,7 +43,8 @@ const loadAll = async () => {
   authStore.updateUser({
     nickname: profileRes.data?.nickname,
     avatar: profileRes.data?.avatar,
-    phone: profileRes.data?.phone
+    phone: profileRes.data?.phone,
+    blacklisted: profileRes.data?.blacklisted
   })
   orders.value = orderRes.data
   favorites.value = favoriteRes.data.content
@@ -55,6 +58,22 @@ const saveProfile = async () => {
     avatar: profile.avatar,
     phone: profile.phone
   })
+}
+
+const changePassword = async () => {
+  if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+    ElMessage.error('两次输入的新密码不一致')
+    return
+  }
+  await http.post('/user/password', {
+    oldPassword: passwordForm.oldPassword,
+    newPassword: passwordForm.newPassword
+  })
+  ElMessage.success('登录密码已更新')
+  passwordForm.oldPassword = ''
+  passwordForm.newPassword = ''
+  passwordForm.confirmPassword = ''
+  showPasswordDialog.value = false
 }
 
 const payOrder = async (id) => {
@@ -274,6 +293,13 @@ const closeProfileDialog = () => {
         <h3 style="margin-top: 0;">系统提示</h3>
         <p class="muted">已完成的订单点击操作列的“评价”按钮即可进行评分与晒图。</p>
         <p class="muted">已支付订单可发起退款申请，最迟入住当天 12:00 前可提交，需管理员审核后完成。</p>
+        <el-alert
+          v-if="profile.blacklisted"
+          title="当前账号已在黑名单中，不能继续新订房。"
+          type="warning"
+          :closable="false"
+          style="margin-top: 16px;"
+        />
       </div>
     </aside>
 
@@ -304,7 +330,26 @@ const closeProfileDialog = () => {
       </el-form>
       <template #footer>
         <el-button @click="closeProfileDialog">取消</el-button>
+        <el-button plain @click="showPasswordDialog = true">修改密码</el-button>
         <el-button type="primary" color="#b5653b" @click="saveProfile">保存资料</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="showPasswordDialog" title="修改登录密码" width="420px">
+      <el-form label-position="top">
+        <el-form-item label="原密码">
+          <el-input v-model="passwordForm.oldPassword" type="password" show-password />
+        </el-form-item>
+        <el-form-item label="新密码">
+          <el-input v-model="passwordForm.newPassword" type="password" show-password />
+        </el-form-item>
+        <el-form-item label="确认新密码">
+          <el-input v-model="passwordForm.confirmPassword" type="password" show-password />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showPasswordDialog = false">取消</el-button>
+        <el-button type="primary" color="#b5653b" @click="changePassword">确认修改</el-button>
       </template>
     </el-dialog>
 

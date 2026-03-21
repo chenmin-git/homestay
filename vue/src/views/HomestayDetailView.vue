@@ -15,8 +15,8 @@ const booking = reactive({
   checkInDate: '',
   checkOutDate: '',
   roomIds: [],
-  contactName: '演示联系人',
-  contactPhone: '13800138000',
+  contactName: '',
+  contactPhone: '',
   remark: ''
 })
 
@@ -61,6 +61,8 @@ const selectedRooms = computed(() => {
   return availableRooms.value.filter((room) => booking.roomIds.includes(room.id))
 })
 
+const isBlacklisted = computed(() => authStore.user?.blacklisted === true)
+
 const applyRouteDates = () => {
   const checkInDate = typeof route.query.checkInDate === 'string' ? route.query.checkInDate : ''
   const checkOutDate = typeof route.query.checkOutDate === 'string' ? route.query.checkOutDate : ''
@@ -96,6 +98,10 @@ const queryAvailability = async () => {
 const createOrder = async () => {
   if (!authStore.isLoggedIn) {
     ElMessage.warning('请先登录')
+    return
+  }
+  if (isBlacklisted.value) {
+    ElMessage.error('账号已被拉入黑名单，无法继续订房')
     return
   }
   await http.post('/user/orders', {
@@ -349,7 +355,22 @@ onMounted(async () => {
             <strong class="booking-price">￥{{ totalPrice }}</strong>
           </div>
 
-          <el-button type="primary" color="#b5653b" class="full-width" style="margin-top: 16px;" @click="createOrder">
+          <el-alert
+            v-if="isBlacklisted"
+            title="当前账号已被拉入黑名单，不能提交新的预订订单。"
+            type="warning"
+            :closable="false"
+            style="margin-top: 16px;"
+          />
+
+          <el-button
+            type="primary"
+            color="#b5653b"
+            class="full-width"
+            style="margin-top: 16px;"
+            :disabled="isBlacklisted"
+            @click="createOrder"
+          >
             提交订单
           </el-button>
         </div>

@@ -63,30 +63,30 @@ public class AdminController {
     }
 
     @GetMapping("/homestays/{homestayId}")
-    public ApiResponse<?> homestayDetail(@PathVariable Long homestayId) {
+    public ApiResponse<?> homestayDetail(@PathVariable("homestayId") Long homestayId) {
         return ApiResponse.ok(adminService.homestayDetail(currentUser(), homestayId));
     }
 
     @PutMapping("/homestays/{homestayId}")
-    public ApiResponse<?> updateHomestay(@PathVariable Long homestayId, @Valid @RequestBody HomestaySaveRequest request) {
+    public ApiResponse<?> updateHomestay(@PathVariable("homestayId") Long homestayId, @Valid @RequestBody HomestaySaveRequest request) {
         return ApiResponse.ok("房源更新成功", adminService.updateHomestay(currentUser(), homestayId, request));
     }
 
     @PostMapping("/homestays/{homestayId}/toggle-status")
-    public ApiResponse<?> toggleHomestayStatus(@PathVariable Long homestayId) {
+    public ApiResponse<?> toggleHomestayStatus(@PathVariable("homestayId") Long homestayId) {
         return ApiResponse.ok(adminService.toggleHomestayStatus(currentUser(), homestayId));
     }
 
     @DeleteMapping("/homestays/{homestayId}")
-    public ApiResponse<?> deleteHomestay(@PathVariable Long homestayId) {
+    public ApiResponse<?> deleteHomestay(@PathVariable("homestayId") Long homestayId) {
         return ApiResponse.ok("房源删除成功", adminService.deleteHomestay(currentUser(), homestayId));
     }
 
     @GetMapping("/homestays/{homestayId}/calendar")
     public ApiResponse<?> homestayCalendar(
-        @PathVariable Long homestayId,
-        @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
-        @RequestParam(defaultValue = "7") int days
+        @PathVariable("homestayId") Long homestayId,
+        @RequestParam(value = "startDate", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
+        @RequestParam(value = "days", defaultValue = "7") int days
     ) {
         return ApiResponse.ok(adminService.homestayCalendar(currentUser(), homestayId, startDate, days));
     }
@@ -98,14 +98,20 @@ public class AdminController {
 
     @PostMapping("/orders/{orderId}/confirm")
     @PreAuthorize("hasRole('HOST')")
-    public ApiResponse<?> confirmOrder(@PathVariable Long orderId) {
+    public ApiResponse<?> confirmOrder(@PathVariable("orderId") Long orderId) {
         return ApiResponse.ok("已确认入住", adminService.confirmOrder(currentUser(), orderId));
     }
 
     @PostMapping("/orders/{orderId}/refund")
     @PreAuthorize("hasRole('HOST')")
-    public ApiResponse<?> refundOrder(@PathVariable Long orderId) {
+    public ApiResponse<?> refundOrder(@PathVariable("orderId") Long orderId) {
         return ApiResponse.ok("退款处理完成", adminService.refundOrder(currentUser(), orderId));
+    }
+
+    @DeleteMapping("/orders/{orderId}")
+    public ApiResponse<?> deleteOrder(@PathVariable("orderId") Long orderId) {
+        adminService.deleteOrder(currentUser(), orderId);
+        return ApiResponse.ok("订单删除成功", null);
     }
 
     @GetMapping("/orders/export")
@@ -191,28 +197,53 @@ public class AdminController {
         return ApiResponse.ok(adminService.hostApplications(currentUser()));
     }
 
+    @GetMapping("/password-reset-requests")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<?> passwordResetRequests() {
+        return ApiResponse.ok(adminService.passwordResetRequests(currentUser()));
+    }
+
     @PostMapping("/host-applications/{applicationId}/approve")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<?> approveHostApplication(@PathVariable Long applicationId) {
+    public ApiResponse<?> approveHostApplication(@PathVariable("applicationId") Long applicationId) {
         return ApiResponse.ok("审核通过", adminService.approveHostApplication(currentUser(), applicationId));
     }
 
     @PostMapping("/host-applications/{applicationId}/reject")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<?> rejectHostApplication(@PathVariable Long applicationId) {
+    public ApiResponse<?> rejectHostApplication(@PathVariable("applicationId") Long applicationId) {
         return ApiResponse.ok("已拒绝", adminService.rejectHostApplication(currentUser(), applicationId));
+    }
+
+    @PostMapping("/password-reset-requests/{requestId}/approve")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<?> approvePasswordResetRequest(@PathVariable("requestId") Long requestId) {
+        return ApiResponse.ok("改密审核通过", adminService.approvePasswordResetRequest(currentUser(), requestId));
+    }
+
+    @PostMapping("/password-reset-requests/{requestId}/reject")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<?> rejectPasswordResetRequest(@PathVariable("requestId") Long requestId) {
+        return ApiResponse.ok("改密申请已拒绝", adminService.rejectPasswordResetRequest(currentUser(), requestId));
     }
 
     @PostMapping("/users/{userId}/toggle-enabled")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<?> toggleEnabled(@PathVariable Long userId) {
+    public ApiResponse<?> toggleEnabled(@PathVariable("userId") Long userId) {
         return ApiResponse.ok(adminService.toggleUserStatus(userId));
     }
 
     @PostMapping("/users/{userId}/toggle-blacklist")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<?> toggleBlacklist(@PathVariable Long userId) {
+    public ApiResponse<?> toggleBlacklist(@PathVariable("userId") Long userId) {
         return ApiResponse.ok(adminService.toggleBlacklist(userId));
+    }
+
+    @DeleteMapping("/users/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<?> deleteUser(@PathVariable("userId") Long userId) {
+        adminService.deleteUser(currentUser(), userId);
+        return ApiResponse.ok("用户删除成功", null);
     }
 
     @GetMapping("/reviews")
@@ -221,12 +252,12 @@ public class AdminController {
     }
 
     @PostMapping("/reviews/{reviewId}/reply")
-    public ApiResponse<?> replyReview(@PathVariable Long reviewId, @Valid @RequestBody ReviewReplyRequest request) {
+    public ApiResponse<?> replyReview(@PathVariable("reviewId") Long reviewId, @Valid @RequestBody ReviewReplyRequest request) {
         return ApiResponse.ok(adminService.replyReview(currentUser(), reviewId, request.replyContent()));
     }
 
     @PostMapping("/reviews/{reviewId}/hide")
-    public ApiResponse<?> hideReview(@PathVariable Long reviewId) {
+    public ApiResponse<?> hideReview(@PathVariable("reviewId") Long reviewId) {
         adminService.hideReview(currentUser(), reviewId);
         return ApiResponse.ok("评论已隐藏", null);
     }
