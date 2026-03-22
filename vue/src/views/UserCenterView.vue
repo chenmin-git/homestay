@@ -206,6 +206,34 @@ const closeProfileDialog = () => {
     router.replace({ path: '/user', query: {} })
   }
 }
+
+const deleteAccount = async () => {
+  const hasUnfinishedOrders = orders.value.some(o => !['COMPLETED', 'CANCELLED', 'REFUNDED'].includes(o.orderStatus))
+  if (hasUnfinishedOrders) {
+    ElMessage.warning('您有未完成的订单，暂时无法注销账号。')
+    return
+  }
+  try {
+    await ElMessageBox.confirm(
+      '确定要注销您的账号吗？注销后所有订单、收藏和评论都将被彻底删除，且不可恢复。',
+      '危险操作',
+      {
+        confirmButtonText: '确定注销',
+        cancelButtonText: '取消',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger'
+      }
+    )
+    await http.delete('/user/account')
+    ElMessage.success('账号已注销')
+    authStore.logout()
+    router.push('/')
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error(e.response?.data?.message || e.message || '注销失败')
+    }
+  }
+}
 </script>
 
 <template>
@@ -300,6 +328,10 @@ const closeProfileDialog = () => {
           :closable="false"
           style="margin-top: 16px;"
         />
+        <div class="spaced" style="margin-top: 16px;">
+          <el-button plain @click="showPasswordDialog = true">修改密码</el-button>
+          <el-button type="danger" plain @click="deleteAccount">注销账号</el-button>
+        </div>
       </div>
     </aside>
 

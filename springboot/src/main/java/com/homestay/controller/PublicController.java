@@ -64,7 +64,7 @@ public class PublicController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof JwtUserPrincipal) {
             JwtUserPrincipal principal = (JwtUserPrincipal) authentication.getPrincipal();
-            return principal.userId();
+            return principal.getUserId();
         }
         return null;
     }

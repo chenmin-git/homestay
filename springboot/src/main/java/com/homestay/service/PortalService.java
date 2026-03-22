@@ -27,9 +27,11 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,7 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PortalService {
 
-    private static final List<OrderStatus> ACTIVE_ORDER_STATUSES = List.of(
+    private static final List<OrderStatus> ACTIVE_ORDER_STATUSES = Arrays.asList(
         OrderStatus.PENDING_PAYMENT,
         OrderStatus.PAID,
         OrderStatus.CONFIRMED,
@@ -81,13 +83,13 @@ public class PortalService {
 
     public Map<String, Object> homeData() {
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("banners", bannerRepository.findByEnabledTrueOrderBySortOrderAsc().stream().map(this::bannerSummary).toList());
+        data.put("banners", bannerRepository.findByEnabledTrueOrderBySortOrderAsc().stream().map(this::bannerSummary).collect(java.util.stream.Collectors.toList()));
         data.put("notices", noticeRepository.findTop5ByPublishedTrueOrderByCreatedAtDesc());
         data.put("hotHomestays", homestayRepository.findTop6ByStatusOrderByBookingCountDescCreatedAtDesc(HomestayStatus.ONLINE)
-            .stream().map(h -> homestayCard(h, null)).toList());
+            .stream().map(h -> homestayCard(h, null)).collect(java.util.stream.Collectors.toList()));
         data.put("latestHomestays", homestayRepository.findTop6ByStatusOrderByCreatedAtDesc(HomestayStatus.ONLINE)
-            .stream().map(h -> homestayCard(h, null)).toList());
-        data.put("houseTypes", List.of("大床房", "双床房", "亲子房", "Loft", "整栋别墅"));
+            .stream().map(h -> homestayCard(h, null)).collect(java.util.stream.Collectors.toList()));
+        data.put("houseTypes", Arrays.asList("大床房", "双床房", "亲子房", "Loft", "整栋别墅"));
         return data;
     }
 
@@ -128,19 +130,19 @@ public class PortalService {
             ).stream()
                 .map(homestay -> homestayCard(homestay, user, countAvailableRooms(homestay, checkInDate, checkOutDate)))
                 .filter(item -> Integer.parseInt(String.valueOf(item.get("availableRoomCount"))) > 0)
-                .toList();
+                .collect(java.util.stream.Collectors.toList());
 
             int fromIndex = Math.min(pageNumber * pageSize, matched.size());
             int toIndex = Math.min(fromIndex + pageSize, matched.size());
-            return Map.of(
-                "content", matched.subList(fromIndex, toIndex),
-                "page", pageNumber,
-                "size", pageSize,
-                "total", matched.size()
-            );
+            Map<String, Object> resultBody = new LinkedHashMap<>();
+            resultBody.put("content", matched.subList(fromIndex, toIndex));
+            resultBody.put("page", pageNumber);
+            resultBody.put("size", pageSize);
+            resultBody.put("total", matched.size());
+            return resultBody;
         }
 
-        var result = homestayRepository.search(
+        Page<Homestay> resultPage = homestayRepository.search(
             HomestayStatus.ONLINE,
             normalizedCity,
             normalizedKeyword,
@@ -149,12 +151,12 @@ public class PortalService {
             normalizedHouseType,
             PageRequest.of(pageNumber, pageSize)
         );
-        return Map.of(
-            "content", result.getContent().stream().map(h -> homestayCard(h, user, null)).toList(),
-            "page", result.getNumber(),
-            "size", result.getSize(),
-            "total", result.getTotalElements()
-        );
+        Map<String, Object> resultBody = new LinkedHashMap<>();
+        resultBody.put("content", resultPage.getContent().stream().map(h -> homestayCard(h, user, null)).collect(java.util.stream.Collectors.toList()));
+        resultBody.put("page", resultPage.getNumber());
+        resultBody.put("size", resultPage.getSize());
+        resultBody.put("total", resultPage.getTotalElements());
+        return resultBody;
     }
 
     @Transactional(readOnly = true)
@@ -184,22 +186,26 @@ public class PortalService {
         data.put("rating", homestay.getRating());
         data.put("favoriteCount", homestay.getFavoriteCount());
         data.put("bookingCount", homestay.getBookingCount());
-        data.put("host", Map.of(
-            "id", homestay.getHost().getId(),
-            "nickname", homestay.getHost().getNickname(),
-            "phone", homestay.getHost().getPhone() == null ? "" : homestay.getHost().getPhone()
-        ));
-        data.put("images", images.stream().map(HomestayImage::getImageUrl).toList());
-        data.put("rooms", rooms.stream().map(room -> Map.of(
-            "id", room.getId(),
-            "roomNo", room.getRoomNo(),
-            "roomType", room.getRoomType(),
-            "price", room.getPrice(),
-            "floorNo", room.getFloorNo(),
-            "bedCount", room.getBedCount(),
-            "capacity", room.getCapacity()
-        )).toList());
-        data.put("reviews", reviews.stream().map(this::reviewSummary).toList());
+        
+        Map<String, Object> hostData = new LinkedHashMap<>();
+        hostData.put("id", homestay.getHost().getId());
+        hostData.put("nickname", homestay.getHost().getNickname());
+        hostData.put("phone", homestay.getHost().getPhone() == null ? "" : homestay.getHost().getPhone());
+        data.put("host", hostData);
+        
+        data.put("images", images.stream().map(HomestayImage::getImageUrl).collect(java.util.stream.Collectors.toList()));
+        data.put("rooms", rooms.stream().map(room -> {
+            Map<String, Object> roomData = new LinkedHashMap<>();
+            roomData.put("id", room.getId());
+            roomData.put("roomNo", room.getRoomNo());
+            roomData.put("roomType", room.getRoomType());
+            roomData.put("price", room.getPrice());
+            roomData.put("floorNo", room.getFloorNo());
+            roomData.put("bedCount", room.getBedCount());
+            roomData.put("capacity", room.getCapacity());
+            return roomData;
+        }).collect(java.util.stream.Collectors.toList()));
+        data.put("reviews", reviews.stream().map(this::reviewSummary).collect(java.util.stream.Collectors.toList()));
         data.put("favorite", user != null && favoriteRepository.findByUserAndHomestay(user, homestay).isPresent());
         return data;
     }
@@ -214,13 +220,13 @@ public class PortalService {
         Homestay homestay = homestayRepository.findById(homestayId)
             .orElseThrow(() -> new BusinessException("房源不存在"));
         List<Room> rooms = roomRepository.findByHomestayAndEnabledTrueOrderByRoomNoAsc(homestay);
-        List<Long> roomIds = rooms.stream().map(Room::getId).toList();
+        List<Long> roomIds = rooms.stream().map(Room::getId).collect(java.util.stream.Collectors.toList());
         List<BookingOrder> conflicts = bookingOrderRepository.findConflictingOrders(roomIds, checkInDate, checkOutDate, ACTIVE_ORDER_STATUSES);
         List<Long> unavailableRoomIds = conflicts.stream()
             .flatMap(order -> bookingOrderRoomRepository.findByOrder(order).stream())
             .map(item -> item.getRoom().getId())
             .distinct()
-            .toList();
+            .collect(java.util.stream.Collectors.toList());
         return rooms.stream()
             .filter(room -> !unavailableRoomIds.contains(room.getId()))
             .map(room -> {
@@ -233,7 +239,7 @@ public class PortalService {
                 item.put("floorNo", room.getFloorNo());
                 return item;
             })
-            .toList();
+            .collect(java.util.stream.Collectors.toList());
     }
 
     @Transactional(readOnly = true)
@@ -241,8 +247,10 @@ public class PortalService {
         List<Map<String, Object>> items = favoriteRepository.findByUserOrderByCreatedAtDesc(user).stream()
             .map(Favorite::getHomestay)
             .map(h -> homestayCard(h, user, null))
-            .toList();
-        return Map.of("content", items);
+            .collect(java.util.stream.Collectors.toList());
+        Map<String, Object> resultBody = new LinkedHashMap<>();
+        resultBody.put("content", items);
+        return resultBody;
     }
 
     public Map<String, Object> homestayCard(Homestay homestay, User user) {
@@ -292,40 +300,40 @@ public class PortalService {
         if (rooms.isEmpty()) {
             return 0;
         }
-        List<Long> roomIds = rooms.stream().map(Room::getId).toList();
+        List<Long> roomIds = rooms.stream().map(Room::getId).collect(java.util.stream.Collectors.toList());
         List<BookingOrder> conflicts = bookingOrderRepository.findConflictingOrders(roomIds, checkInDate, checkOutDate, ACTIVE_ORDER_STATUSES);
         List<Long> unavailableRoomIds = conflicts.stream()
             .flatMap(order -> bookingOrderRoomRepository.findByOrder(order).stream())
             .map(item -> item.getRoom().getId())
             .distinct()
-            .toList();
+            .collect(java.util.stream.Collectors.toList());
         return (int) rooms.stream().filter(room -> !unavailableRoomIds.contains(room.getId())).count();
     }
 
     private Map<String, Object> reviewSummary(Review review) {
-        return Map.of(
-            "id", review.getId(),
-            "score", review.getScore(),
-            "content", review.getContent() == null ? "" : review.getContent(),
-            "imageUrls", splitCsv(review.getImageUrls()),
-            "replyContent", review.getReplyContent() == null ? "" : review.getReplyContent(),
-            "createdAt", review.getCreatedAt(),
-            "nickname", review.getUser().getNickname()
-        );
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("id", review.getId());
+        data.put("score", review.getScore());
+        data.put("content", review.getContent() == null ? "" : review.getContent());
+        data.put("imageUrls", splitCsv(review.getImageUrls()));
+        data.put("replyContent", review.getReplyContent() == null ? "" : review.getReplyContent());
+        data.put("createdAt", review.getCreatedAt());
+        data.put("nickname", review.getUser().getNickname());
+        return data;
     }
 
     private Map<String, Object> bannerSummary(Banner banner) {
-        return Map.of(
-            "id", banner.getId(),
-            "title", banner.getTitle(),
-            "imageUrl", banner.getImageUrl(),
-            "linkUrl", banner.getLinkUrl() == null ? "" : banner.getLinkUrl()
-        );
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("id", banner.getId());
+        data.put("title", banner.getTitle());
+        data.put("imageUrl", banner.getImageUrl());
+        data.put("linkUrl", banner.getLinkUrl() == null ? "" : banner.getLinkUrl());
+        return data;
     }
 
     private List<String> splitCsv(String source) {
         if (source == null || source.isBlank()) {
-            return List.of();
+            return new ArrayList<>();
         }
         List<String> items = new ArrayList<>();
         for (String item : source.split(",")) {

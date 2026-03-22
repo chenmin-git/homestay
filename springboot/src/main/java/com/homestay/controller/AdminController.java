@@ -10,7 +10,7 @@ import com.homestay.entity.User;
 import com.homestay.repository.UserRepository;
 import com.homestay.security.SecurityUtils;
 import com.homestay.service.AdminService;
-import jakarta.validation.Valid;
+import javax.validation.Valid;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Locale;
@@ -130,7 +130,7 @@ public class AdminController {
 
         for (Object row : rows) {
             @SuppressWarnings("unchecked")
-            var item = (java.util.Map<String, Object>) row;
+            java.util.Map<String, Object> item = (java.util.Map<String, Object>) row;
             Row dataRow = sheet.createRow(rowIndex++);
             dataRow.createCell(0).setCellValue(safeText(item.get("orderNo")));
             dataRow.createCell(1).setCellValue(safeText(item.get("createdAt")));
@@ -159,26 +159,26 @@ public class AdminController {
 
     private String formatOrderStatus(Object status) {
         String value = safeText(status).toUpperCase(Locale.ROOT);
-        return switch (value) {
-            case "PENDING_PAYMENT" -> "待支付";
-            case "PAID" -> "已支付";
-            case "CONFIRMED" -> "待入住";
-            case "COMPLETED" -> "已完成";
-            case "CANCELLED" -> "已取消";
-            case "REFUND_REQUESTED" -> "退款中";
-            case "REFUNDED" -> "已退款";
-            default -> safeText(status);
-        };
+        switch (value) {
+            case "PENDING_PAYMENT": return "待支付";
+            case "PAID": return "已支付";
+            case "CONFIRMED": return "待入住";
+            case "COMPLETED": return "已完成";
+            case "CANCELLED": return "已取消";
+            case "REFUND_REQUESTED": return "退款中";
+            case "REFUNDED": return "已退款";
+            default: return safeText(status);
+        }
     }
 
     private String formatPaymentStatus(Object status) {
         String value = safeText(status).toUpperCase(Locale.ROOT);
-        return switch (value) {
-            case "PAID" -> "已支付";
-            case "UNPAID" -> "未支付";
-            case "REFUNDED" -> "已退款";
-            default -> safeText(status);
-        };
+        switch (value) {
+            case "PAID": return "已支付";
+            case "UNPAID": return "未支付";
+            case "REFUNDED": return "已退款";
+            default: return safeText(status);
+        }
     }
 
     private String safeText(Object value) {
@@ -253,7 +253,7 @@ public class AdminController {
 
     @PostMapping("/reviews/{reviewId}/reply")
     public ApiResponse<?> replyReview(@PathVariable("reviewId") Long reviewId, @Valid @RequestBody ReviewReplyRequest request) {
-        return ApiResponse.ok(adminService.replyReview(currentUser(), reviewId, request.replyContent()));
+        return ApiResponse.ok(adminService.replyReview(currentUser(), reviewId, request.getReplyContent()));
     }
 
     @PostMapping("/reviews/{reviewId}/hide")
@@ -289,7 +289,7 @@ public class AdminController {
     }
 
     private User currentUser() {
-        Long userId = SecurityUtils.currentUser().userId();
+        Long userId = SecurityUtils.currentUser().getUserId();
         return userRepository.findById(userId).orElseThrow();
     }
 }

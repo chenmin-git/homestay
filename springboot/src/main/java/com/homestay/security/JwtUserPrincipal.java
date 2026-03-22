@@ -19,11 +19,11 @@ public class JwtUserPrincipal implements UserDetails {
         this.role = role;
     }
 
-    public Long userId() {
+    public Long getUserId() {
         return userId;
     }
 
-    public RoleType role() {
+    public RoleType getRole() {
         return role;
     }
 

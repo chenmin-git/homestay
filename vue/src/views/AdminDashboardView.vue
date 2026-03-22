@@ -331,12 +331,41 @@ const renderCharts = () => {
     echarts.getInstanceByDom(pieRef.value)?.dispose()
     const chart = echarts.init(pieRef.value)
     chart.setOption({
-      tooltip: { trigger: 'item' },
+      tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+      legend: {
+        type: 'scroll',
+        orient: 'horizontal',
+        left: 'center',
+        bottom: 0,
+        textStyle: { fontSize: 12 }
+      },
       series: [{
+        name: '房源类型',
         type: 'pie',
-        radius: ['38%', '72%'],
+        radius: ['40%', '70%'],
+        center: ['60%', '50%'],
+        avoidLabelOverlap: true,
+        itemStyle: {
+          borderRadius: 10,
+          borderColor: '#fff',
+          borderWidth: 2
+        },
+        label: {
+          show: false,
+          position: 'center'
+        },
+        emphasis: {
+          label: {
+            show: true,
+            fontSize: 20,
+            fontWeight: 'bold'
+          }
+        },
+        labelLine: {
+          show: false
+        },
         data: dashboard.value.typePie,
-        color: ['#b5653b', '#5b8870', '#d2a679', '#7f3f20', '#95b3a1']
+        color: ['#b5653b', '#5b8870', '#d2a679', '#7f3f20', '#95b3a1', '#c17a54', '#6b9a82']
       }]
     })
   }
@@ -547,6 +576,34 @@ const confirmDeleteOrder = async (id) => {
     await loadAll()
   } catch {
     // User canceled
+  }
+}
+
+const deleteAccount = async () => {
+  const hasUnfinishedOrders = orders.value.some(o => !['COMPLETED', 'CANCELLED', 'REFUNDED'].includes(o.orderStatus))
+  if (hasUnfinishedOrders) {
+    ElMessage.warning('您有未完成的订单，暂时无法注销账号。')
+    return
+  }
+  try {
+    await ElMessageBox.confirm(
+      '确定要注销您的账号吗？注销后所有房源、订单和评论都将被彻底删除，且不可恢复。',
+      '危险操作',
+      {
+        confirmButtonText: '确定注销',
+        cancelButtonText: '取消',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger'
+      }
+    )
+    await http.delete('/user/account')
+    ElMessage.success('账号已注销')
+    authStore.logout()
+    router.push('/')
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error(e.response?.data?.message || e.message || '注销失败')
+    }
   }
 }
 
@@ -1192,6 +1249,11 @@ onMounted(loadAll)
               </el-form-item>
               <div style="margin-top: 30px; text-align: center;">
                 <el-button type="primary" color="#b5653b" style="width: 100%;" @click="changePassword">确认修改密码</el-button>
+              </div>
+              <div style="margin-top: 20px; text-align: center; border-top: 1px solid #ebeef5; padding-top: 20px;">
+                <h3 style="margin: 0 0 10px; color: #f56c6c; text-align: left;">危险区域</h3>
+                <p class="muted" style="text-align: left; margin-bottom: 20px;">如果您不再使用该平台并且没有未完成的订单，可以申请注销您的宿主账号。</p>
+                <el-button type="danger" plain style="width: 100%;" @click="deleteAccount">注销账号</el-button>
               </div>
             </el-form>
           </div>

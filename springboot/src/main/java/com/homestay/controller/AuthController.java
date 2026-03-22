@@ -7,7 +7,7 @@ import com.homestay.dto.AuthDtos.LoginRequest;
 import com.homestay.dto.AuthDtos.RegisterRequest;
 import com.homestay.dto.AuthDtos.UserPasswordResetRequest;
 import com.homestay.service.AuthService;
-import jakarta.validation.Valid;
+import javax.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;

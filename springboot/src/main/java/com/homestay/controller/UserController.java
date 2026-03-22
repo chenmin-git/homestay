@@ -10,7 +10,7 @@ import com.homestay.repository.UserRepository;
 import com.homestay.security.SecurityUtils;
 import com.homestay.service.PortalService;
 import com.homestay.service.UserCenterService;
-import jakarta.validation.Valid;
+import javax.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -98,6 +98,12 @@ public class UserController {
         return ApiResponse.ok("评价成功", userCenterService.createReview(currentUser(), request));
     }
 
+    @DeleteMapping("/account")
+    public ApiResponse<?> deleteAccount() {
+        userCenterService.deleteAccount(currentUser());
+        return ApiResponse.ok("账号已注销", null);
+    }
+
     @PostMapping("/password")
     public ApiResponse<?> changePassword(@Valid @RequestBody PasswordChangeRequest request) {
         userCenterService.changePassword(currentUser(), request);
@@ -105,7 +111,7 @@ public class UserController {
     }
 
     private User currentUser() {
-        Long userId = SecurityUtils.currentUser().userId();
+        Long userId = SecurityUtils.currentUser().getUserId();
         return userRepository.findById(userId).orElseThrow();
     }
 }

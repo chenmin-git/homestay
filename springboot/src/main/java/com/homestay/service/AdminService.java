@@ -138,28 +138,31 @@ public class AdminService {
                 item.put("date", start.toLocalDate());
                 item.put("count", count);
                 return item;
-            }).toList();
+            }).collect(java.util.stream.Collectors.toList());
         Map<String, Long> typePie = homestays.stream().collect(
             java.util.stream.Collectors.groupingBy(Homestay::getHouseType, LinkedHashMap::new, java.util.stream.Collectors.counting())
         );
         long pendingOrders = orders.stream().filter(item -> item.getOrderStatus() == OrderStatus.PAID).count();
         long newComments = reviews.stream().filter(item -> item.getStatus() == ReviewStatus.APPROVED).count();
         try {
-            return Map.of(
-                "todayOrders", todayOrders,
-                "todaySales", todaySales,
-                "totalSales", sales,
-                "newUsers", newUsers,
-                "orderTrend", orderTrend,
-                "typePie", typePie.entrySet().stream()
-                    .map(item -> {
-                        Map<String, Object> entry = new LinkedHashMap<>();
-                        entry.put("name", item.getKey() == null ? "其他" : item.getKey());
-                        entry.put("value", item.getValue());
-                        return entry;
-                    }).toList(),
-                "todos", Map.of("pendingOrders", pendingOrders, "newComments", newComments)
-            );
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("todayOrders", todayOrders);
+            result.put("todaySales", todaySales);
+            result.put("totalSales", sales);
+            result.put("newUsers", newUsers);
+            result.put("orderTrend", orderTrend);
+            result.put("typePie", typePie.entrySet().stream()
+                .map(item -> {
+                    Map<String, Object> entry = new LinkedHashMap<>();
+                    entry.put("name", item.getKey() == null ? "其他" : item.getKey());
+                    entry.put("value", item.getValue());
+                    return entry;
+                }).collect(java.util.stream.Collectors.toList()));
+            Map<String, Object> todos = new LinkedHashMap<>();
+            todos.put("pendingOrders", pendingOrders);
+            todos.put("newComments", newComments);
+            result.put("todos", todos);
+            return result;
         } catch (Exception e) {
             e.printStackTrace();
             throw new BusinessException("仪表盘数据加载失败: " + e.getMessage());
@@ -171,7 +174,7 @@ public class AdminService {
         List<Homestay> homestays = operator.getRole() == RoleType.HOST
             ? homestayRepository.findByHost(operator)
             : homestayRepository.findAll();
-        return homestays.stream().map(this::homestaySummary).toList();
+        return homestays.stream().map(this::homestaySummary).collect(java.util.stream.Collectors.toList());
     }
 
     @Transactional(readOnly = true)
@@ -195,7 +198,7 @@ public class AdminService {
             data.put("orderStatus", item.getOrderStatus().name());
             data.put("paymentStatus", item.getPaymentStatus().name());
             return data;
-        }).toList();
+        }).collect(java.util.stream.Collectors.toList());
     }
 
     @Transactional(readOnly = true)
@@ -211,7 +214,7 @@ public class AdminService {
                 data.put("enabled", item.getEnabled() != null && item.getEnabled());
                 data.put("blacklisted", item.getBlacklisted() != null && item.getBlacklisted());
                 return data;
-            }).toList();
+            }).collect(java.util.stream.Collectors.toList());
         } catch (Exception e) {
             e.printStackTrace();
             throw new BusinessException("用户列表加载失败: " + e.getMessage());
@@ -275,7 +278,10 @@ public class AdminService {
         application.setStatus(HostApplyStatus.APPROVED);
         application.setReviewedAt(LocalDateTime.now());
         hostApplicationRepository.save(application);
-        return Map.of("id", application.getId(), "status", application.getStatus().name());
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("id", application.getId());
+        result.put("status", application.getStatus().name());
+        return result;
     }
 
     @Transactional
@@ -289,7 +295,10 @@ public class AdminService {
         application.setStatus(HostApplyStatus.REJECTED);
         application.setReviewedAt(LocalDateTime.now());
         hostApplicationRepository.save(application);
-        return Map.of("id", application.getId(), "status", application.getStatus().name());
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("id", application.getId());
+        result.put("status", application.getStatus().name());
+        return result;
     }
 
     @Transactional
@@ -312,7 +321,10 @@ public class AdminService {
         request.setStatus(PasswordResetStatus.APPROVED);
         request.setReviewedAt(LocalDateTime.now());
         passwordResetRequestRepository.save(request);
-        return Map.of("id", request.getId(), "status", request.getStatus().name());
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("id", request.getId());
+        result.put("status", request.getStatus().name());
+        return result;
     }
 
     @Transactional
@@ -326,7 +338,10 @@ public class AdminService {
         request.setStatus(PasswordResetStatus.REJECTED);
         request.setReviewedAt(LocalDateTime.now());
         passwordResetRequestRepository.save(request);
-        return Map.of("id", request.getId(), "status", request.getStatus().name());
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("id", request.getId());
+        result.put("status", request.getStatus().name());
+        return result;
     }
 
     @Transactional(readOnly = true)
@@ -342,19 +357,19 @@ public class AdminService {
             data.put("status", item.getStatus().name());
             data.put("createdAt", item.getCreatedAt());
             return data;
-        }).toList();
+        }).collect(java.util.stream.Collectors.toList());
     }
 
     public Map<String, Object> settings() {
-        return Map.of(
-            "banners", bannerRepository.findAll(),
-            "notices", noticeRepository.findTop5ByPublishedTrueOrderByCreatedAtDesc()
-        );
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("banners", bannerRepository.findAll());
+        data.put("notices", noticeRepository.findTop5ByPublishedTrueOrderByCreatedAtDesc());
+        return data;
     }
 
     @Transactional
     public Map<String, Object> createHomestay(User operator, HomestaySaveRequest request) {
-        String normalizedName = request.name().trim();
+        String normalizedName = request.getName().trim();
         if (homestayRepository.existsByHostAndNameIgnoreCase(operator, normalizedName)) {
             throw new BusinessException("同名房源已存在，请修改名称");
         }
@@ -365,8 +380,8 @@ public class AdminService {
         homestay.setStatus(operator.getRole() == RoleType.HOST ? HomestayStatus.DRAFT : HomestayStatus.ONLINE);
         applyHomestayBaseInfo(homestay, request);
         homestay = homestayRepository.save(homestay);
-        saveHomestayImages(homestay, request.images());
-        syncRooms(homestay, request.rooms());
+        saveHomestayImages(homestay, request.getImages());
+        syncRooms(homestay, request.getRooms());
         homestayRepository.save(homestay);
         return homestayEditorData(homestay);
     }
@@ -374,7 +389,7 @@ public class AdminService {
     @Transactional
     public Map<String, Object> updateHomestay(User operator, Long homestayId, HomestaySaveRequest request) {
         Homestay homestay = loadOwnedHomestay(operator, homestayId);
-        String normalizedName = request.name().trim();
+        String normalizedName = request.getName().trim();
         if (homestayRepository.existsByHostAndNameIgnoreCaseAndIdNot(homestay.getHost(), normalizedName, homestayId)) {
             throw new BusinessException("同名房源已存在，请修改名称");
         }
@@ -383,8 +398,8 @@ public class AdminService {
             homestay.setStatus(HomestayStatus.DRAFT);
         }
         homestayRepository.save(homestay);
-        saveHomestayImages(homestay, request.images());
-        syncRooms(homestay, request.rooms());
+        saveHomestayImages(homestay, request.getImages());
+        syncRooms(homestay, request.getRooms());
         homestayRepository.save(homestay);
         return homestayEditorData(homestay);
     }
@@ -398,14 +413,20 @@ public class AdminService {
             }
             homestay.setStatus(HomestayStatus.ONLINE);
             homestayRepository.save(homestay);
-            return Map.of("id", homestay.getId(), "status", homestay.getStatus().name());
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("id", homestay.getId());
+            result.put("status", homestay.getStatus().name());
+            return result;
         }
         HomestayStatus nextStatus = homestay.getStatus() == HomestayStatus.ONLINE
             ? HomestayStatus.OFFLINE
             : HomestayStatus.ONLINE;
         homestay.setStatus(nextStatus);
         homestayRepository.save(homestay);
-        return Map.of("id", homestay.getId(), "status", homestay.getStatus().name());
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("id", homestay.getId());
+        result.put("status", homestay.getStatus().name());
+        return result;
     }
 
     @Transactional
@@ -421,7 +442,10 @@ public class AdminService {
         favoriteRepository.deleteAll(favoriteRepository.findByHomestay(homestay));
         roomRepository.deleteAll(roomRepository.findByHomestayOrderByRoomNoAsc(homestay));
         homestayRepository.delete(homestay);
-        return Map.of("id", homestayId, "deleted", true);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("id", homestayId);
+        result.put("deleted", true);
+        return result;
     }
 
     @Transactional(readOnly = true)
@@ -435,8 +459,8 @@ public class AdminService {
         List<BookingOrder> bookings = bookingOrderRepository.findByHomestayOrderByCreatedAtDesc(homestay).stream()
             .filter(this::shouldOccupyInventory)
             .filter(order -> order.getCheckInDate().isBefore(calendarEndExclusive) && order.getCheckOutDate().isAfter(calendarStart))
-            .toList();
-        List<BookingOrderRoom> bookingRooms = bookings.isEmpty() ? List.of() : bookingOrderRoomRepository.findByOrderIn(bookings);
+            .collect(java.util.stream.Collectors.toList());
+        List<BookingOrderRoom> bookingRooms = bookings.isEmpty() ? new ArrayList<>() : bookingOrderRoomRepository.findByOrderIn(bookings);
 
         Map<Long, List<BookingOrder>> roomOrderMap = new LinkedHashMap<>();
         for (BookingOrderRoom binding : bookingRooms) {
@@ -450,7 +474,7 @@ public class AdminService {
 
         List<Map<String, Object>> roomRows = new ArrayList<>();
         for (Room room : rooms) {
-            List<BookingOrder> roomBookings = new ArrayList<>(roomOrderMap.getOrDefault(room.getId(), List.of()));
+            List<BookingOrder> roomBookings = new ArrayList<>(roomOrderMap.getOrDefault(room.getId(), new ArrayList<>()));
             roomBookings.sort((left, right) -> left.getCheckInDate().compareTo(right.getCheckInDate()));
 
             List<Map<String, Object>> slots = new ArrayList<>();
@@ -512,7 +536,10 @@ public class AdminService {
         BookingOrder order = loadOwnedOrder(operator, orderId);
         order.setOrderStatus(OrderStatus.CONFIRMED);
         bookingOrderRepository.save(order);
-        return Map.of("id", order.getId(), "orderStatus", order.getOrderStatus().name());
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("id", order.getId());
+        result.put("orderStatus", order.getOrderStatus().name());
+        return result;
     }
 
     @Transactional
@@ -527,7 +554,10 @@ public class AdminService {
         order.setOrderStatus(OrderStatus.REFUNDED);
         order.setPaymentStatus(PaymentStatus.REFUNDED);
         bookingOrderRepository.save(order);
-        return Map.of("id", order.getId(), "paymentStatus", order.getPaymentStatus().name());
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("id", order.getId());
+        result.put("paymentStatus", order.getPaymentStatus().name());
+        return result;
     }
 
     @Transactional
@@ -547,7 +577,10 @@ public class AdminService {
         User user = userRepository.findById(userId).orElseThrow(() -> new BusinessException("用户不存在"));
         user.setEnabled(!user.getEnabled());
         userRepository.save(user);
-        return Map.of("id", user.getId(), "enabled", user.getEnabled());
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("id", user.getId());
+        result.put("enabled", user.getEnabled());
+        return result;
     }
 
     @Transactional
@@ -555,7 +588,10 @@ public class AdminService {
         User user = userRepository.findById(userId).orElseThrow(() -> new BusinessException("用户不存在"));
         user.setBlacklisted(!user.getBlacklisted());
         userRepository.save(user);
-        return Map.of("id", user.getId(), "blacklisted", user.getBlacklisted());
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("id", user.getId());
+        result.put("blacklisted", user.getBlacklisted());
+        return result;
     }
 
     @Transactional
@@ -584,7 +620,10 @@ public class AdminService {
         Review review = loadOwnedReview(operator, reviewId);
         review.setReplyContent(content);
         reviewRepository.save(review);
-        return Map.of("id", review.getId(), "replyContent", review.getReplyContent());
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("id", review.getId());
+        result.put("replyContent", review.getReplyContent());
+        return result;
     }
 
     @Transactional
@@ -599,11 +638,11 @@ public class AdminService {
         bannerRepository.deleteAll();
         for (BannerSaveRequest req : requests) {
             Banner banner = new Banner();
-            banner.setTitle(req.title());
-            banner.setImageUrl(req.imageUrl());
-            banner.setLinkUrl(req.linkUrl());
-            banner.setSortOrder(req.sortOrder() == null ? 0 : req.sortOrder());
-            banner.setEnabled(req.enabled() == null || req.enabled());
+            banner.setTitle(req.getTitle());
+            banner.setImageUrl(req.getImageUrl());
+            banner.setLinkUrl(req.getLinkUrl());
+            banner.setSortOrder(req.getSortOrder() == null ? 0 : req.getSortOrder());
+            banner.setEnabled(req.getEnabled() == null || req.getEnabled());
             bannerRepository.save(banner);
         }
     }
@@ -613,19 +652,19 @@ public class AdminService {
         noticeRepository.deleteAll();
         for (NoticeSaveRequest req : requests) {
             Notice notice = new Notice();
-            notice.setTitle(req.title());
-            notice.setContent(req.content());
-            notice.setPublished(req.published() == null || req.published());
+            notice.setTitle(req.getTitle());
+            notice.setContent(req.getContent());
+            notice.setPublished(req.getPublished() == null || req.getPublished());
             noticeRepository.save(notice);
         }
     }
 
     @Transactional
     public void changePassword(User operator, PasswordChangeRequest request) {
-        if (!passwordEncoder.matches(request.oldPassword(), operator.getPassword())) {
+        if (!passwordEncoder.matches(request.getOldPassword(), operator.getPassword())) {
             throw new BusinessException("原密码错误");
         }
-        operator.setPassword(passwordEncoder.encode(request.newPassword()));
+        operator.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(operator);
     }
 
@@ -685,7 +724,7 @@ public class AdminService {
         ensureRoom(cityStay, "S1101", "商务大床房", 11, 588, 1, 2);
         ensureRoom(cityStay, "S1102", "双床商务房", 11, 628, 2, 2);
         ensureRoom(cityStay, "S1201", "城景套房", 12, 788, 1, 3);
-        ensureImages(cityStay, List.of(
+        ensureImages(cityStay, java.util.Arrays.asList(
             "/assets/photos/photo-1494526585095.jpg",
             "/assets/photos/photo-1505693416388.jpg"
         ));
@@ -698,14 +737,14 @@ public class AdminService {
             "既能满足家庭包院，也能按真实房间库存出售，不会因一笔订单就整套停售。");
         ensureRoom(lakeVilla, "H201", "亲子套房", 2, 428, 2, 3);
         ensureRoom(lakeVilla, "H202", "湖景家庭房", 2, 498, 2, 4);
-        ensureImages(lakeVilla, List.of(
+        ensureImages(lakeVilla, java.util.Arrays.asList(
             "/assets/photos/photo-1523217582562.jpg",
             "/assets/photos/photo-1505693416388.jpg"
         ));
 
         BookingOrder paidOrder = ensureOrder(
             "HSDEMO202603180001", admin, villa,
-            List.of(findRoomByNo(villa, "A101")),
+            java.util.Arrays.asList(findRoomByNo(villa, "A101")),
             LocalDate.now().plusDays(2), LocalDate.now().plusDays(4),
             OrderStatus.PAID, PaymentStatus.PAID, "系统演示用户", "13800000000", "管理员演示订单"
         );
@@ -713,21 +752,21 @@ public class AdminService {
 
         ensureOrder(
             "HSDEMO202603180002", user, villa,
-            List.of(findRoomByNo(villa, "A102")),
+            java.util.Arrays.asList(findRoomByNo(villa, "A102")),
             LocalDate.now().plusDays(1), LocalDate.now().plusDays(2),
             OrderStatus.PENDING_PAYMENT, PaymentStatus.UNPAID, "演示游客", "13800138000", "待支付演示"
         );
 
         ensureOrder(
             "HSDEMO202603180003", user2, courtyard,
-            List.of(findRoomByNo(courtyard, "C301")),
+            java.util.Arrays.asList(findRoomByNo(courtyard, "C301")),
             LocalDate.now().plusDays(3), LocalDate.now().plusDays(6),
             OrderStatus.CONFIRMED, PaymentStatus.PAID, "差旅白领", "13900000004", "待入住演示"
         );
 
         BookingOrder completedOrder = ensureOrder(
             "HSDEMO202603180004", user3, cityStay,
-            List.of(findRoomByNo(cityStay, "S1201")),
+            java.util.Arrays.asList(findRoomByNo(cityStay, "S1201")),
             LocalDate.now().minusDays(10), LocalDate.now().minusDays(7),
             OrderStatus.COMPLETED, PaymentStatus.PAID, "周末旅行家", "13900000005", "已完成演示"
         );
@@ -735,21 +774,21 @@ public class AdminService {
 
         ensureOrder(
             "HSDEMO202603180005", user2, lakeVilla,
-            List.of(findRoomByNo(lakeVilla, "H201")),
+            java.util.Arrays.asList(findRoomByNo(lakeVilla, "H201")),
             LocalDate.now().minusDays(5), LocalDate.now().minusDays(3),
             OrderStatus.REFUNDED, PaymentStatus.REFUNDED, "差旅白领", "13900000004", "退款演示"
         );
 
         ensureOrder(
             "HSDEMO202603180006", user, cityStay,
-            List.of(findRoomByNo(cityStay, "S1101")),
+            java.util.Arrays.asList(findRoomByNo(cityStay, "S1101")),
             LocalDate.now().plusDays(6), LocalDate.now().plusDays(8),
             OrderStatus.CANCELLED, PaymentStatus.UNPAID, "演示游客", "13900000003", "取消演示"
         );
 
         BookingOrder hiddenReviewOrder = ensureOrder(
             "HSDEMO202603180007", user2, courtyard,
-            List.of(findRoomByNo(courtyard, "C302")),
+            java.util.Arrays.asList(findRoomByNo(courtyard, "C302")),
             LocalDate.now().minusDays(12), LocalDate.now().minusDays(9),
             OrderStatus.COMPLETED, PaymentStatus.PAID, "差旅白领", "13900000004", "隐藏评论演示"
         );
@@ -983,7 +1022,7 @@ public class AdminService {
         List<HomestayImage> images = homestayImageRepository.findByHomestayOrderBySortOrderAsc(homestay);
         List<Room> rooms = roomRepository.findByHomestayOrderByRoomNoAsc(homestay).stream()
             .filter(room -> Boolean.TRUE.equals(room.getEnabled()))
-            .toList();
+            .collect(java.util.stream.Collectors.toList());
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("id", homestay.getId());
         data.put("name", homestay.getName());
@@ -1000,7 +1039,7 @@ public class AdminService {
         data.put("summary", homestay.getSummary());
         data.put("description", homestay.getDescription());
         data.put("status", homestay.getStatus().name());
-        data.put("images", images.stream().map(HomestayImage::getImageUrl).toList());
+        data.put("images", images.stream().map(HomestayImage::getImageUrl).collect(java.util.stream.Collectors.toList()));
         data.put("rooms", rooms.stream().map(room -> {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("id", room.getId());
@@ -1011,31 +1050,31 @@ public class AdminService {
             item.put("bedCount", room.getBedCount());
             item.put("capacity", room.getCapacity());
             return item;
-        }).toList());
+        }).collect(java.util.stream.Collectors.toList()));
         return data;
     }
 
     private void applyHomestayBaseInfo(Homestay homestay, HomestaySaveRequest request) {
-        homestay.setName(request.name().trim());
-        homestay.setCity(request.city().trim());
-        homestay.setDistrict(nullableText(request.district()));
-        homestay.setAddress(request.address().trim());
-        homestay.setBasePrice(request.basePrice());
-        homestay.setHouseType(request.houseType().trim());
-        homestay.setTags(normalizeCsv(request.tags()));
-        homestay.setFacilities(normalizeCsv(request.facilities()));
-        homestay.setLatitude(request.latitude());
-        homestay.setLongitude(request.longitude());
-        homestay.setCoverImage(request.coverImage().trim());
-        homestay.setSummary(request.summary().trim());
-        homestay.setDescription(request.description().trim());
+        homestay.setName(request.getName().trim());
+        homestay.setCity(request.getCity().trim());
+        homestay.setDistrict(nullableText(request.getDistrict()));
+        homestay.setAddress(request.getAddress().trim());
+        homestay.setBasePrice(request.getBasePrice());
+        homestay.setHouseType(request.getHouseType().trim());
+        homestay.setTags(normalizeCsv(request.getTags()));
+        homestay.setFacilities(normalizeCsv(request.getFacilities()));
+        homestay.setLatitude(request.getLatitude());
+        homestay.setLongitude(request.getLongitude());
+        homestay.setCoverImage(request.getCoverImage().trim());
+        homestay.setSummary(request.getSummary().trim());
+        homestay.setDescription(request.getDescription().trim());
     }
 
     private void saveHomestayImages(Homestay homestay, List<String> images) {
         List<String> normalizedImages = images.stream()
             .map(this::nullableText)
             .filter(text -> text != null && !text.isBlank())
-            .toList();
+            .collect(java.util.stream.Collectors.toList());
         if (normalizedImages.isEmpty()) {
             throw new BusinessException("至少保留一张房源图片");
         }
@@ -1061,8 +1100,8 @@ public class AdminService {
         Set<String> roomNoSet = new HashSet<>();
 
         for (RoomForm roomForm : roomForms) {
-            String roomNo = nullableText(roomForm.roomNo());
-            String roomType = nullableText(roomForm.roomType());
+            String roomNo = nullableText(roomForm.getRoomNo());
+            String roomType = nullableText(roomForm.getRoomType());
             if (roomNo == null || roomType == null) {
                 throw new BusinessException("房号与房型不能为空");
             }
@@ -1072,8 +1111,8 @@ public class AdminService {
             }
 
             Room room;
-            if (roomForm.id() != null) {
-                room = existingRoomMap.get(roomForm.id());
+            if (roomForm.getId() != null) {
+                room = existingRoomMap.get(roomForm.getId());
                 if (room == null) {
                     throw new BusinessException("房间不存在或不属于当前房源");
                 }
@@ -1084,10 +1123,10 @@ public class AdminService {
 
             room.setRoomNo(roomNo);
             room.setRoomType(roomType);
-            room.setFloorNo(roomForm.floorNo());
-            room.setPrice(roomForm.price());
-            room.setBedCount(roomForm.bedCount());
-            room.setCapacity(roomForm.capacity());
+            room.setFloorNo(roomForm.getFloorNo());
+            room.setPrice(roomForm.getPrice());
+            room.setBedCount(roomForm.getBedCount());
+            room.setCapacity(roomForm.getCapacity());
             room.setEnabled(true);
             roomRepository.save(room);
             retainedRoomIds.add(room.getId());
@@ -1155,7 +1194,7 @@ public class AdminService {
         }
         return bookingOrderRepository.findAll().stream()
             .filter(order -> order.getHomestay().getHost().getId().equals(operator.getId()))
-            .toList();
+            .collect(java.util.stream.Collectors.toList());
     }
 
     private List<Review> filterReviewsForOperator(User operator) {
@@ -1164,7 +1203,7 @@ public class AdminService {
         }
         return reviewRepository.findAllByOrderByCreatedAtDesc().stream()
             .filter(review -> review.getHomestay().getHost().getId().equals(operator.getId()))
-            .toList();
+            .collect(java.util.stream.Collectors.toList());
     }
 
     private String normalizeCsv(String source) {
