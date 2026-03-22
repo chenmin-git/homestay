@@ -290,6 +290,7 @@ public class AdminController {
 
     private User currentUser() {
         Long userId = SecurityUtils.currentUser().getUserId();
-        return userRepository.findById(userId).orElseThrow();
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new com.homestay.common.BusinessException("User not found"));
     }
 }
