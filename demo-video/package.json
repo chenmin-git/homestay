@@ -1,0 +1,17 @@
+{
+  "name": "homestay-demo-video",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "still": "remotion still src/index.jsx HomestayDemo --frame=90 --output=../docs/video/homestay-demo-check.png",
+    "render": "remotion render src/index.jsx HomestayDemo ../docs/video/homestay-demo.mp4 --codec=h264 --pixel-format=yuv420p"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.355",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.355"
+  },
+  "devDependencies": {}
+}

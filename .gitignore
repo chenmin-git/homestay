@@ -1,9 +1,14 @@
 .run/
 .tools/
 .playwright-mcp/
+.DS_Store
+node_modules/
 *.log
 hs_err_pid*.log
 replay_pid*.log
 springboot/build*.log
 springboot/build_output*.txt
 springboot/uploads/
+demo-video/node_modules/
+docs/video/check-frames/
+docs/video/*-check.png
