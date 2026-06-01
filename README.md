@@ -6,6 +6,8 @@
 
 [观看项目演示视频](docs/video/homestay-demo.mp4)
 
+演示视频从统一登录入口开始，依次说明游客/用户、房东、管理员三个角色，再展示各角色的核心操作页面。
+
 ## 功能模块
 
 ```mermaid
@@ -40,13 +42,13 @@ flowchart TB
 | --- | --- |
 | ![首页](docs/screenshots/01-home.png) | ![房源详情](docs/screenshots/03-homestay-detail.png) |
 
-| 登录 | 管理后台 |
+| 登录 | 房东后台 |
 | --- | --- |
-| ![登录](docs/screenshots/02-login.png) | ![管理后台](docs/screenshots/04-admin-dashboard.png) |
+| ![登录](docs/screenshots/02-login.png) | ![房东后台](docs/screenshots/06-host-dashboard.png) |
 
-| 用户中心 |
-| --- |
-| ![用户中心](docs/screenshots/05-user-center.png) |
+| 用户中心 | 管理员后台 |
+| --- | --- |
+| ![用户中心](docs/screenshots/05-user-center.png) | ![管理员后台](docs/screenshots/04-admin-dashboard.png) |
 
 ## 技术栈
 

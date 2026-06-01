@@ -1,10 +1,31 @@
 [
   {
-    "kind": "intro",
-    "title": "栖间民宿管理系统",
-    "subtitle": "Spring Boot + Vue 的真实房间库存预订演示",
-    "modules": ["游客选房", "房号库存", "在线下单", "房东后台", "管理员审核"],
-    "architecture": ["Vue 3 前端", "Axios 代理", "Spring Boot API", "Spring Security JWT", "MySQL 本地数据"]
+    "kind": "screenshot",
+    "title": "统一登录入口",
+    "subtitle": "先从账号入口进入系统，再按角色进入对应页面",
+    "image": "screenshots/02-login.png"
+  },
+  {
+    "kind": "roles",
+    "title": "三个核心角色",
+    "subtitle": "同一套系统覆盖游客预订、房东运营和管理员治理",
+    "roles": [
+      {
+        "name": "游客 / 用户",
+        "account": "user",
+        "focus": "浏览房源、选择房号、下单支付、收藏评价"
+      },
+      {
+        "name": "房东",
+        "account": "host",
+        "focus": "发布房源、维护房间、确认入住、处理退款和评论"
+      },
+      {
+        "name": "管理员",
+        "account": "admin",
+        "focus": "查看全局数据、管理用户、审核房东与改密申请"
+      }
+    ]
   },
   {
     "kind": "screenshot",
@@ -14,26 +35,26 @@
   },
   {
     "kind": "screenshot",
-    "title": "房源详情",
+    "title": "用户选房下单",
     "subtitle": "按入住日期查看可订房号，支持多房间订单模型",
     "image": "screenshots/03-homestay-detail.png"
   },
   {
     "kind": "screenshot",
-    "title": "统一登录",
-    "subtitle": "游客、房东、管理员共用登录入口，JWT 保护后台接口",
-    "image": "screenshots/02-login.png"
-  },
-  {
-    "kind": "screenshot",
-    "title": "管理后台",
-    "subtitle": "订单、房源、用户、评论和审核任务集中处理",
-    "image": "screenshots/04-admin-dashboard.png"
-  },
-  {
-    "kind": "screenshot",
     "title": "用户中心",
-    "subtitle": "个人资料、订单、收藏、评价和密码维护形成完整闭环",
+    "subtitle": "个人资料、订单、收藏、评价和密码维护形成闭环",
     "image": "screenshots/05-user-center.png"
+  },
+  {
+    "kind": "screenshot",
+    "title": "房东后台",
+    "subtitle": "房东聚焦房源、房态、订单、评论和账号安全",
+    "image": "screenshots/06-host-dashboard.png"
+  },
+  {
+    "kind": "screenshot",
+    "title": "管理员后台",
+    "subtitle": "管理员处理全局看板、用户治理和审核任务",
+    "image": "screenshots/04-admin-dashboard.png"
   }
 ]

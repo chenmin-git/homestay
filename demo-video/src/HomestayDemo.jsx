@@ -43,6 +43,113 @@ const Pill = ({ children, color = palette.brand }) => (
   </div>
 );
 
+const RoleScene = ({ scene, caption, localFrame }) => {
+  const opacity = interpolate(localFrame, [0, 22], [0, 1], {
+    extrapolateRight: 'clamp',
+    easing: ease
+  });
+  const cardY = interpolate(localFrame, [0, 32], [34, 0], {
+    extrapolateRight: 'clamp',
+    easing: ease
+  });
+  const roleColors = [palette.brand, palette.warm, palette.accent];
+
+  return (
+    <AbsoluteFill style={{ backgroundColor: palette.paper, padding: '72px 88px' }}>
+      <div style={{ opacity }}>
+        <div style={{ color: palette.brand, fontSize: 32, fontWeight: 900, marginBottom: 18 }}>
+          登录后的角色分工
+        </div>
+        <h1 style={{ color: palette.ink, fontSize: 82, lineHeight: 1.08, margin: 0 }}>
+          {scene.title}
+        </h1>
+        <p style={{ color: palette.muted, fontSize: 34, lineHeight: 1.45, marginTop: 22 }}>
+          {scene.subtitle}
+        </p>
+      </div>
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: 28,
+          marginTop: 62,
+          transform: `translateY(${cardY}px)`,
+          opacity
+        }}
+      >
+        {scene.roles.map((role, index) => (
+          <div
+            key={role.name}
+            style={{
+              minHeight: 390,
+              border: `2px solid ${palette.line}`,
+              borderRadius: 28,
+              backgroundColor: '#ffffff',
+              padding: 34,
+              boxShadow: '0 22px 56px rgba(15, 23, 42, 0.10)'
+            }}
+          >
+            <div
+              style={{
+                width: 72,
+                height: 72,
+                borderRadius: 22,
+                backgroundColor: roleColors[index],
+                color: '#ffffff',
+                display: 'grid',
+                placeItems: 'center',
+                fontSize: 36,
+                fontWeight: 950,
+                marginBottom: 30
+              }}
+            >
+              {index + 1}
+            </div>
+            <div style={{ color: palette.ink, fontSize: 42, fontWeight: 900, marginBottom: 16 }}>
+              {role.name}
+            </div>
+            <div
+              style={{
+                display: 'inline-flex',
+                color: roleColors[index],
+                border: `2px solid ${roleColors[index]}`,
+                borderRadius: 999,
+                padding: '10px 18px',
+                fontSize: 24,
+                fontWeight: 850,
+                marginBottom: 28
+              }}
+            >
+              演示账号：{role.account}
+            </div>
+            <div style={{ color: palette.muted, fontSize: 30, lineHeight: 1.5, fontWeight: 700 }}>
+              {role.focus}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div
+        style={{
+          position: 'absolute',
+          left: 88,
+          right: 88,
+          bottom: 58,
+          borderTop: `2px solid ${palette.line}`,
+          paddingTop: 26,
+          color: palette.ink,
+          fontSize: 34,
+          fontWeight: 820,
+          opacity
+        }}
+      >
+        {caption}
+      </div>
+    </AbsoluteFill>
+  );
+};
+
 const IntroScene = ({ scene, localFrame }) => {
   const titleY = interpolate(localFrame, [0, 34], [32, 0], {
     extrapolateRight: 'clamp',
@@ -209,6 +316,8 @@ export const HomestayDemo = () => {
     <AbsoluteFill style={{ fontFamily: 'Arial, "PingFang SC", "Microsoft YaHei", sans-serif' }}>
       {scene.kind === 'intro' ? (
         <IntroScene scene={scene} localFrame={localFrame} />
+      ) : scene.kind === 'roles' ? (
+        <RoleScene scene={scene} caption={caption} localFrame={localFrame} />
       ) : (
         <ScreenshotScene scene={scene} caption={caption} localFrame={localFrame} />
       )}
