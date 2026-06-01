@@ -63,7 +63,7 @@ const IntroScene = ({ scene, localFrame }) => {
         }}
       >
         <div style={{ color: palette.brand, fontSize: 34, fontWeight: 800, marginBottom: 22 }}>
-          DEMO RELEASE
+          项目演示
         </div>
         <h1 style={{ color: palette.ink, fontSize: 92, lineHeight: 1.05, margin: 0 }}>
           {scene.title}
@@ -141,7 +141,7 @@ const IntroScene = ({ scene, localFrame }) => {
 };
 
 const ScreenshotScene = ({ scene, caption, localFrame }) => {
-  const imageScale = interpolate(localFrame, [0, sceneFrames], [1.04, 1], {
+  const imageScale = interpolate(localFrame, [0, sceneFrames], [1.015, 1], {
     extrapolateRight: 'clamp',
     easing: ease
   });
@@ -155,7 +155,7 @@ const ScreenshotScene = ({ scene, caption, localFrame }) => {
       <div
         style={{
           position: 'absolute',
-          inset: '54px 70px 170px 70px',
+          inset: '44px 204px 186px 204px',
           border: `2px solid ${palette.line}`,
           borderRadius: 28,
           overflow: 'hidden',
@@ -181,29 +181,17 @@ const ScreenshotScene = ({ scene, caption, localFrame }) => {
           bottom: 48,
           display: 'flex',
           alignItems: 'flex-end',
-          justifyContent: 'space-between',
+          justifyContent: 'flex-start',
           opacity: titleOpacity
         }}
       >
-        <div>
+        <div style={{ maxWidth: 1640 }}>
           <div style={{ color: palette.brand, fontSize: 28, fontWeight: 900, marginBottom: 12 }}>
             {scene.title}
           </div>
-          <div style={{ color: palette.ink, fontSize: 42, fontWeight: 850 }}>
+          <div style={{ color: palette.ink, fontSize: 46, fontWeight: 850, lineHeight: 1.2 }}>
             {caption}
           </div>
-        </div>
-        <div
-          style={{
-            color: palette.muted,
-            border: `2px solid ${palette.line}`,
-            borderRadius: 999,
-            padding: '14px 26px',
-            fontSize: 24,
-            fontWeight: 800
-          }}
-        >
-          Homestay Demo
         </div>
       </div>
     </AbsoluteFill>
