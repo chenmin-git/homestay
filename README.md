@@ -1,5 +1,28 @@
 # 栖间民宿管理系统
 
+<!-- open-source-intro-start -->
+> **作者寄语**
+> 
+> 主包是 02 年的，15 岁开始学习计算机，17 岁入行。虽然没有上过大学，但已经帮助很多人顺利毕业和就业。开源这些项目，希望能帮助到你们，也顺便推荐我的论文 AI 工具。如果对主包感兴趣，可以在抖音搜索：迷人闹；如果想学习 AI 编程或需要辅导，也可以联系主包。
+> 
+> **论文/毕设画图工具推荐：** [毕业论文画图助手](https://gitee.com/chenmin_1_2857135639/bishelunwen) 支持架构图、流程图、ER 图、业务流程图等，适合配合本项目完成论文和答辩材料。
+<!-- open-source-intro-end -->
+
+<!-- third-party-api-start -->
+## 第三方 API 配置说明
+
+### 高德地图 JavaScript API
+
+- 用途：用于后台地图选点、民宿/地址坐标拾取与地图展示。
+- 官方文档：<https://lbs.amap.com/api/javascript-api-v2/summary>
+- Key 申请页：<https://console.amap.com/dev/key/app>
+- 获取方式：登录高德开放平台，创建应用，添加 Web 端（JS API）Key，并在安全设置中获取或配置安全密钥 `securityJsCode`。
+- 环境变量：`VITE_AMAP_KEY=your_amap_js_key`，`VITE_AMAP_SECURITY_JS_CODE=your_security_js_code`。
+
+> 注意：不要把真实 API Key、Secret、Token 提交到代码仓库。开源示例只保留占位值，本地运行时再写入 `.env` 或系统环境变量。
+<!-- third-party-api-end -->
+
+
 栖间民宿管理系统是一个前后端分离的民宿预订与运营管理项目，后端使用 Spring Boot + Spring Data JPA，前端使用 Vue 3 + Vite + Element Plus。项目重点演示“民宿下有多个真实房间”的库存模型，用户下单时可以按入住日期查询可订房号，避免传统课程设计里“一套民宿被一个订单锁死”的简化问题。
 
 ## 演示视频

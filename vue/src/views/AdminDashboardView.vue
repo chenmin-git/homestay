@@ -218,11 +218,20 @@ const openMapPicker = () => {
 }
 
 const initMap = () => {
-  // 设置高德地图安全密钥 (使用用户提供的真实密钥)
-  window._AMapSecurityConfig = {
-    securityJsCode: 'bff902e5c7e910511640421729ec30a1' 
+  // 从环境变量读取高德地图 Key，避免在开源代码中暴露真实密钥
+  const amapKey = import.meta.env.VITE_AMAP_KEY
+  const amapSecurityJsCode = import.meta.env.VITE_AMAP_SECURITY_JS_CODE
+
+  if (!amapKey) {
+    ElMessage.warning('未配置高德地图 VITE_AMAP_KEY，地图选点暂不可用')
+    return
   }
 
+  if (amapSecurityJsCode) {
+    window._AMapSecurityConfig = {
+      securityJsCode: amapSecurityJsCode
+    }
+  }
   // 动态加载高德地图脚本
   if (window.AMap) {
     nextTick(() => renderMap())
@@ -230,7 +239,7 @@ const initMap = () => {
   }
   
   const script = document.createElement('script')
-  script.src = 'https://webapi.amap.com/maps?v=2.0&key=1fe4fae05e875f7e4923b0258755942d' 
+  script.src = `https://webapi.amap.com/maps?v=2.0&key=${encodeURIComponent(amapKey)}`
   script.onload = () => renderMap()
   document.head.appendChild(script)
 }
